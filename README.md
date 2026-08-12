@@ -9,7 +9,7 @@ Abre em qualquer máquina (casa, trabalho, celular) e mostra as mesmas notas.
 
 ## Por que resolve o problema das notas autoadesivas
 
-- Cada pedido do chefe é **um item separado**, não uma linha perdida dentro de uma nota gigante.
+- Cada pedido é **um item separado**, não uma linha perdida dentro de uma nota gigante.
 - **Trabalho e vida pessoal separados** por área — um clique (ou as teclas `1`, `2`, `3`) troca de contexto
   e tudo muda com ele: visões, projetos, contadores e o que você anota em seguida.
 - Busca instantânea em tudo (título, detalhes, área, projeto, tags) — `Ctrl+K`.
