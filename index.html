@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MeuNotas</title>
+<meta name="description" content="Sistema pessoal de notas, tarefas e prazos com sincronia via GitHub.">
+<meta name="theme-color" content="#12141a">
+<link rel="icon" href="icone.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topo">
+  <button class="botao-icone so-mobile" id="btn-menu" title="Menu" aria-label="Menu">☰</button>
+  <div class="marca"><span class="marca-ponto"></span>MeuNotas</div>
+
+  <div class="busca">
+    <span class="busca-lupa">⌕</span>
+    <input id="busca" type="search" placeholder="Buscar em tudo…  (Ctrl+K)" autocomplete="off" spellcheck="false">
+    <button class="busca-limpar" id="btn-limpar-busca" title="Limpar" hidden>×</button>
+  </div>
+
+  <div class="topo-acoes">
+    <button class="pill" id="pill-sync" title="Estado da sincronia — clique para sincronizar agora">
+      <span class="pill-luz" id="pill-luz"></span><span id="pill-texto">Local</span>
+    </button>
+    <button class="botao-icone" id="btn-tema" title="Tema claro/escuro">◐</button>
+    <button class="botao-icone" id="btn-ajuda" title="Atalhos (?)">?</button>
+    <button class="botao-icone" id="btn-config" title="Configurar sincronia">⚙</button>
+  </div>
+</header>
+
+<div class="corpo">
+  <aside class="lateral" id="lateral">
+    <nav class="grupo">
+      <div class="grupo-titulo">Visões</div>
+      <button class="link-visao" data-visao="hoje"><span class="ico">◉</span>Hoje<span class="conta" data-conta="hoje"></span></button>
+      <button class="link-visao" data-visao="atrasadas"><span class="ico">⚠</span>Atrasadas<span class="conta alerta" data-conta="atrasadas"></span></button>
+      <button class="link-visao" data-visao="semana"><span class="ico">▤</span>7 dias<span class="conta" data-conta="semana"></span></button>
+      <button class="link-visao" data-visao="fixadas"><span class="ico">★</span>Fixadas<span class="conta" data-conta="fixadas"></span></button>
+      <button class="link-visao" data-visao="entrada"><span class="ico">⬒</span>Sem projeto<span class="conta" data-conta="entrada"></span></button>
+      <button class="link-visao" data-visao="tudo"><span class="ico">≡</span>Tudo em aberto<span class="conta" data-conta="tudo"></span></button>
+      <button class="link-visao" data-visao="feitas"><span class="ico">✓</span>Concluídas<span class="conta" data-conta="feitas"></span></button>
+    </nav>
+
+    <nav class="grupo">
+      <div class="grupo-titulo">Projetos</div>
+      <div id="lista-projetos"></div>
+      <button class="link-visao sutil" id="btn-novo-projeto"><span class="ico">＋</span>Novo projeto</button>
+    </nav>
+
+    <div class="lateral-pe">
+      <div id="resumo-lateral"></div>
+    </div>
+  </aside>
+
+  <main class="principal">
+    <div class="captura">
+      <input id="entrada" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Anota rápido e dá Enter…   #projeto  !hoje  !amanha  !12/03  !3d  @tag  * fixar">
+      <button class="botao-primario" id="btn-add">Anotar</button>
+    </div>
+    <div class="captura-dica" id="captura-dica"></div>
+
+    <div class="cabecalho-lista">
+      <h1 id="titulo-lista">Hoje</h1>
+      <div class="cabecalho-acoes">
+        <select id="ordem" title="Ordenar">
+          <option value="prazo">Prazo</option>
+          <option value="recentes">Mais recentes</option>
+          <option value="antigas">Mais antigas</option>
+          <option value="alfabetica">A–Z</option>
+        </select>
+        <label class="check-mini"><input type="checkbox" id="mostrar-feitas"> mostrar concluídas</label>
+      </div>
+    </div>
+
+    <div id="lista"></div>
+  </main>
+</div>
+
+<!-- ============ modal: editar item ============ -->
+<div class="fundo-modal" id="modal-item" hidden>
+  <div class="modal">
+    <div class="modal-topo">
+      <strong id="modal-item-titulo">Editar anotação</strong>
+      <button class="botao-icone" data-fechar-modal>×</button>
+    </div>
+    <div class="modal-corpo">
+      <label class="campo">
+        <span>Título</span>
+        <input id="ed-titulo" type="text" spellcheck="false">
+      </label>
+      <label class="campo">
+        <span>Detalhes <em>(uma linha por passo; use <code>- [ ]</code> para subtarefa clicável)</em></span>
+        <textarea id="ed-detalhes" rows="7" spellcheck="false"></textarea>
+      </label>
+      <div class="campo-linha">
+        <label class="campo">
+          <span>Projeto</span>
+          <input id="ed-projeto" type="text" list="datalist-projetos" spellcheck="false" placeholder="sem projeto">
+          <datalist id="datalist-projetos"></datalist>
+        </label>
+        <label class="campo estreito">
+          <span>Prazo</span>
+          <input id="ed-prazo" type="date">
+        </label>
+      </div>
+      <div class="campo-linha">
+        <label class="campo">
+          <span>Tags <em>(separadas por espaço)</em></span>
+          <input id="ed-tags" type="text" spellcheck="false" placeholder="urgente chefe">
+        </label>
+        <label class="campo estreito alinha-check">
+          <span>&nbsp;</span>
+          <span class="check-mini"><input type="checkbox" id="ed-fixado"> fixar no topo</span>
+        </label>
+      </div>
+      <div class="modal-meta" id="ed-meta"></div>
+    </div>
+    <div class="modal-pe">
+      <button class="botao-perigo" id="ed-apagar">Apagar</button>
+      <span class="espaco"></span>
+      <button class="botao" data-fechar-modal>Cancelar</button>
+      <button class="botao-primario" id="ed-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ modal: configuração ============ -->
+<div class="fundo-modal" id="modal-config" hidden>
+  <div class="modal largo">
+    <div class="modal-topo">
+      <strong>Sincronia e dados</strong>
+      <button class="botao-icone" data-fechar-modal>×</button>
+    </div>
+    <div class="modal-corpo">
+      <p class="nota">
+        As anotações ficam gravadas num arquivo JSON dentro de um repositório <b>privado</b> do seu GitHub.
+        Cada máquina (casa, trabalho, celular) usa a mesma configuração e vê as mesmas notas.
+        Sem servidor, sem VM.
+      </p>
+
+      <div class="campo-linha">
+        <label class="campo"><span>Dono (usuário GitHub)</span><input id="cf-owner" type="text" spellcheck="false" placeholder="Pedrxnes"></label>
+        <label class="campo"><span>Repositório privado das notas</span><input id="cf-repo" type="text" spellcheck="false" placeholder="notas-pessoais"></label>
+      </div>
+      <div class="campo-linha">
+        <label class="campo estreito"><span>Branch</span><input id="cf-branch" type="text" spellcheck="false" placeholder="main"></label>
+        <label class="campo"><span>Caminho do arquivo</span><input id="cf-caminho" type="text" spellcheck="false" placeholder="dados/notas.json"></label>
+      </div>
+      <label class="campo">
+        <span>Token de acesso (fine-grained PAT, permissão <code>Contents: Read and write</code> só nesse repo)</span>
+        <input id="cf-token" type="password" spellcheck="false" placeholder="github_pat_…">
+      </label>
+      <div class="linha-botoes">
+        <label class="check-mini"><input type="checkbox" id="cf-espelho"> gravar também <code>NOTAS.md</code> (ler pelo site do GitHub / celular)</label>
+      </div>
+      <div class="linha-botoes">
+        <button class="botao" id="cf-testar">Testar conexão</button>
+        <button class="botao-primario" id="cf-salvar">Salvar e sincronizar</button>
+        <span id="cf-status" class="status-inline"></span>
+      </div>
+
+      <p class="aviso">
+        <b>Atenção de segurança:</b> o token é guardado no armazenamento local deste navegador, nesta máquina.
+        Qualquer pessoa com acesso ao seu usuário do Windows, ou uma extensão de navegador maliciosa, pode lê-lo.
+        Use um token <i>fine-grained</i> limitado a este único repositório, apenas com <code>Contents: Read and write</code>,
+        e com data de expiração. No notebook do trabalho, prefira um token separado e revogue-o quando não precisar mais
+        (GitHub → Settings → Developer settings → Personal access tokens).
+      </p>
+
+      <hr>
+      <div class="grupo-titulo">Cópia local</div>
+      <div class="linha-botoes">
+        <button class="botao" id="cf-exportar">Exportar JSON</button>
+        <button class="botao" id="cf-importar">Importar JSON</button>
+        <input type="file" id="cf-arquivo" accept="application/json,.json" hidden>
+        <button class="botao" id="cf-notificar">Ativar avisos do sistema</button>
+        <button class="botao-perigo" id="cf-zerar">Apagar dados locais</button>
+      </div>
+      <div class="modal-meta" id="cf-info"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ modal: ajuda ============ -->
+<div class="fundo-modal" id="modal-ajuda" hidden>
+  <div class="modal">
+    <div class="modal-topo"><strong>Como usar</strong><button class="botao-icone" data-fechar-modal>×</button></div>
+    <div class="modal-corpo">
+      <div class="grupo-titulo">Escrevendo na barra de captura</div>
+      <table class="tabela-ajuda">
+        <tr><td><code>#projeto</code></td><td>joga a anotação no projeto (cria se não existir)</td></tr>
+        <tr><td><code>@tag</code></td><td>marca com etiqueta</td></tr>
+        <tr><td><code>!hoje</code> <code>!amanha</code></td><td>prazo hoje / amanhã</td></tr>
+        <tr><td><code>!seg</code> … <code>!dom</code></td><td>próxima segunda … domingo</td></tr>
+        <tr><td><code>!12/03</code> <code>!12/03/2026</code></td><td>data exata</td></tr>
+        <tr><td><code>!3d</code> <code>!2s</code></td><td>em 3 dias / em 2 semanas</td></tr>
+        <tr><td><code>*</code></td><td>fixa no topo</td></tr>
+        <tr><td><code>: detalhe</code></td><td>tudo depois de <code>::</code> vai para os detalhes</td></tr>
+      </table>
+      <p class="nota">Exemplo: <code>* Ajustar retorno da API de saldo #erp !amanha @chefe :: chefe pediu no daily, ver endpoint /saldo/v2</code></p>
+
+      <div class="grupo-titulo">Atalhos</div>
+      <table class="tabela-ajuda">
+        <tr><td><code>n</code></td><td>foco na barra de captura</td></tr>
+        <tr><td><code>Ctrl+K</code> / <code>/</code></td><td>foco na busca</td></tr>
+        <tr><td><code>j</code> / <code>k</code></td><td>desce / sobe na lista</td></tr>
+        <tr><td><code>x</code> ou <code>Espaço</code></td><td>marca / desmarca concluída</td></tr>
+        <tr><td><code>e</code> ou <code>Enter</code></td><td>edita a selecionada</td></tr>
+        <tr><td><code>f</code></td><td>fixa / desfixa</td></tr>
+        <tr><td><code>Del</code></td><td>apaga a selecionada</td></tr>
+        <tr><td><code>Ctrl+Enter</code></td><td>no editor: salvar</td></tr>
+        <tr><td><code>s</code></td><td>sincronizar agora</td></tr>
+        <tr><td><code>Esc</code></td><td>fecha modal / limpa busca</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="aviso-flutuante" id="toast" hidden></div>
+
+<script src="js/util.js"></script>
+<script src="js/parse.js"></script>
+<script src="js/store.js"></script>
+<script src="js/github.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

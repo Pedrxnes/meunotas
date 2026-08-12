@@ -1,0 +1,7 @@
+# repositório privado das notas, clonado dentro desta pasta
+notas-pessoais/
+
+# lixo de sistema
+Thumbs.db
+desktop.ini
+.DS_Store

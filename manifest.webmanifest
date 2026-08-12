@@ -1,0 +1,14 @@
+{
+  "name": "MeuNotas",
+  "short_name": "MeuNotas",
+  "description": "Anotações, tarefas e prazos com sincronia via GitHub.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1116",
+  "theme_color": "#12141a",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
