@@ -122,6 +122,39 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
 .conta.alerta:not(:empty) { color: var(--alerta); font-weight: 700; }
 .bolinha { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
 
+/* ===== áreas (separação trabalho / pessoal) ===== */
+.areas { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 6px 2px; }
+.area {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  background: var(--fundo-3); border: 1px solid var(--borda); color: var(--texto-2);
+  font-size: 12.5px; max-width: 100%;
+}
+.area:hover { border-color: var(--borda-forte); color: var(--texto); }
+.area.ativa { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 600; }
+.area .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.area .n { font-size: 11px; opacity: .7; font-variant-numeric: tabular-nums; }
+.area.mais { color: var(--texto-3); padding: 5px 9px; }
+.area-nova { padding: 6px 6px 0; }
+.area-nova input {
+  width: 100%; height: 30px; padding: 0 9px;
+  background: var(--fundo); border: 1px solid var(--acento); border-radius: 8px; outline: none;
+}
+
+/* ===== filtro por tipo ===== */
+.filtro-tipos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.filtro-tipos:empty { display: none; }
+.tipo-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: 999px; cursor: pointer; font-size: 12.5px;
+  background: transparent; border: 1px solid var(--borda); color: var(--texto-2);
+}
+.tipo-chip:hover { border-color: var(--borda-forte); color: var(--texto); }
+.tipo-chip.ativo { background: var(--acento-fundo); border-color: var(--acento); color: var(--texto); font-weight: 600; }
+.tipo-chip .n { font-size: 11px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.chip.tipo { color: var(--texto-2); }
+.item-titulo .icone-tipo { color: var(--texto-3); margin-right: 2px; }
+
 .lateral-pe { margin-top: auto; padding: 10px 9px 0; border-top: 1px solid var(--borda); font-size: 12px; color: var(--texto-3); }
 
 .principal { flex: 1; overflow-y: auto; padding: 18px 22px 90px; }
@@ -194,8 +227,8 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
   font-size: 11.5px; padding: 2px 8px; border-radius: 999px;
   background: var(--fundo-3); color: var(--texto-2); border: 1px solid transparent;
 }
-.chip.projeto { cursor: pointer; }
-.chip.projeto:hover { border-color: var(--borda-forte); }
+.chip.projeto, .chip.area, .chip.tipo { cursor: pointer; }
+.chip.projeto:hover, .chip.area:hover, .chip.tipo:hover { border-color: var(--borda-forte); }
 .chip.prazo-atrasado { color: var(--perigo); background: rgba(255, 95, 86, .12); font-weight: 600; }
 .chip.prazo-hoje { color: var(--alerta); background: rgba(255, 176, 46, .13); font-weight: 600; }
 .chip.tag { color: var(--texto-3); }

@@ -10,21 +10,36 @@ Abre em qualquer máquina (casa, trabalho, celular) e mostra as mesmas notas.
 ## Por que resolve o problema das notas autoadesivas
 
 - Cada pedido do chefe é **um item separado**, não uma linha perdida dentro de uma nota gigante.
-- Busca instantânea em tudo (título, detalhes, projeto, tags) — `Ctrl+K`.
-- Projetos na lateral: `#erp`, `#relatorios`, cada um com sua contagem de pendências.
+- **Trabalho e vida pessoal separados** por área — um clique (ou as teclas `1`, `2`, `3`) troca de contexto
+  e tudo muda com ele: visões, projetos, contadores e o que você anota em seguida.
+- Busca instantânea em tudo (título, detalhes, área, projeto, tags) — `Ctrl+K`.
+- Projetos na lateral: `#erp`, `#relatorios`, `#carro`, cada um com sua contagem de pendências.
 - Prazos com visões **Hoje**, **Atrasadas**, **7 dias**; contador de atrasadas no título da aba.
 - Captura rápida numa linha: escreve e dá `Enter`, sem abrir janela nenhuma.
 - Funciona offline (é PWA, dá para instalar como aplicativo no Windows); sincroniza quando a rede voltar.
 
+## Áreas e tipos
+
+**Área** = a divisão grande da sua vida. Já vêm `Trabalho` e `Pessoal`; pode criar outras (`Faculdade`,
+`Casa`, `Academia`) no `＋` da lateral. Enquanto uma área está selecionada, tudo que você anota cai nela
+automaticamente — não precisa digitar nada. Clique duplo numa área que você criou renomeia.
+Anotações antigas sem área aparecem em **Tudo** e o ⚙ oferece mandar todas de uma vez para uma área.
+
+**Tipo** = o que aquela linha é: `Tarefa` (padrão), `Nota`, `Ideia`, `Lembrete`. Os chips acima da lista
+filtram por tipo e podem ser combinados — dá para ver, por exemplo, só as ideias do pessoal.
+
 ## Como escrever na barra de captura
 
 ```
-* Ajustar retorno da API de saldo #erp !amanha @chefe :: pediu no daily, ver endpoint /saldo/v2
+* Ajustar retorno da API de saldo %trabalho #erp !amanha @chefe :: pediu no daily, ver /saldo/v2
+Levar o carro na revisão %pessoal #carro !sab +lembrete
 ```
 
 | Símbolo | O que faz |
 |---|---|
+| `%area` | manda para a área (`%trabalho`, `%pessoal`, ou uma sua; cria se não existir) |
 | `#projeto` | joga no projeto (cria se não existir; `_` vira espaço) |
+| `+tipo` | `+nota`, `+ideia`, `+lembrete` (sem isso é tarefa; aceita apelidos como `+lembrar`, `+anotacao`) |
 | `@tag` | etiqueta |
 | `!hoje` `!amanha` `!depois` | prazo hoje / amanhã / depois de amanhã |
 | `!seg` … `!dom` | próxima segunda … domingo |
@@ -37,8 +52,8 @@ Nos detalhes, linhas em `- [ ] passo` viram subtarefas clicáveis.
 
 ## Atalhos
 
-`n` capturar · `Ctrl+K` ou `/` buscar · `j`/`k` navegar · `x` concluir · `f` fixar · `e` editar ·
-`Del` apagar · `Ctrl+Z` desfazer · `s` sincronizar · `?` ajuda · `Esc` fechar
+`n` capturar · `Ctrl+K` ou `/` buscar · `1` `2` `3`… trocar de área · `j`/`k` navegar · `x` concluir ·
+`f` fixar · `e` editar · `Del` apagar · `Ctrl+Z` desfazer · `s` sincronizar · `?` ajuda · `Esc` fechar
 
 ## Configurar a sincronia (uma vez por máquina)
 
@@ -67,8 +82,10 @@ Se algum token vazar, revogue em Settings → Developer settings; as notas conti
   **mescla item por item** pelo campo `atualizadoEm` (vence a alteração mais nova) e grava de volta.
 - Exclusões viajam como marcação `apagado` (some de vez após 45 dias), então apagar em casa apaga no trabalho.
 - Conflito de `sha` (duas máquinas gravando junto) é relido e remesclado automaticamente.
-- Se `NOTAS.md` estiver ligado, o app também grava um resumo legível no repositório privado —
-  serve para ler as pendências pelo site do GitHub, no celular, sem token.
+- Se `NOTAS.md` estiver ligado, o app também grava um resumo legível no repositório privado, separado
+  por área e projeto — serve para ler as pendências pelo site do GitHub, no celular, sem token.
+- O JSON está na versão 2 (com `area` e `tipo`). Arquivo antigo (v1) é lido sem quebrar: os itens
+  entram como “sem área” e tipo `Tarefa`, e o arquivo é regravado em v2 na primeira mudança.
 
 ## Rodando local
 

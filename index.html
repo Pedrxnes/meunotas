@@ -35,6 +35,14 @@
 <div class="corpo">
   <aside class="lateral" id="lateral">
     <nav class="grupo">
+      <div class="grupo-titulo">Área</div>
+      <div class="areas" id="lista-areas"></div>
+      <div class="area-nova" id="area-nova" hidden>
+        <input id="campo-nova-area" type="text" placeholder="nome da área" spellcheck="false" maxlength="30">
+      </div>
+    </nav>
+
+    <nav class="grupo">
       <div class="grupo-titulo">Visões</div>
       <button class="link-visao" data-visao="hoje"><span class="ico">◉</span>Hoje<span class="conta" data-conta="hoje"></span></button>
       <button class="link-visao" data-visao="atrasadas"><span class="ico">⚠</span>Atrasadas<span class="conta alerta" data-conta="atrasadas"></span></button>
@@ -59,10 +67,12 @@
   <main class="principal">
     <div class="captura">
       <input id="entrada" type="text" autocomplete="off" spellcheck="false"
-             placeholder="Anota rápido e dá Enter…   #projeto  !hoje  !amanha  !12/03  !3d  @tag  * fixar">
+             placeholder="Anota rápido e dá Enter…   %area  #projeto  +ideia  !amanha  !12/03  @tag  * fixar">
       <button class="botao-primario" id="btn-add">Anotar</button>
     </div>
     <div class="captura-dica" id="captura-dica"></div>
+
+    <div class="filtro-tipos" id="filtro-tipos"></div>
 
     <div class="cabecalho-lista">
       <h1 id="titulo-lista">Hoje</h1>
@@ -98,10 +108,21 @@
         <textarea id="ed-detalhes" rows="7" spellcheck="false"></textarea>
       </label>
       <div class="campo-linha">
+        <label class="campo estreito">
+          <span>Área</span>
+          <input id="ed-area" type="text" list="datalist-areas" spellcheck="false" placeholder="sem área">
+          <datalist id="datalist-areas"></datalist>
+        </label>
         <label class="campo">
           <span>Projeto</span>
           <input id="ed-projeto" type="text" list="datalist-projetos" spellcheck="false" placeholder="sem projeto">
           <datalist id="datalist-projetos"></datalist>
+        </label>
+      </div>
+      <div class="campo-linha">
+        <label class="campo estreito">
+          <span>Tipo</span>
+          <select id="ed-tipo"></select>
         </label>
         <label class="campo estreito">
           <span>Prazo</span>
@@ -172,6 +193,13 @@
         (GitHub → Settings → Developer settings → Personal access tokens).
       </p>
 
+      <div id="bloco-sem-area" hidden>
+        <hr>
+        <div class="grupo-titulo">Anotações sem área</div>
+        <p class="nota" id="texto-sem-area"></p>
+        <div class="linha-botoes" id="linha-sem-area"></div>
+      </div>
+
       <hr>
       <div class="grupo-titulo">Cópia local</div>
       <div class="linha-botoes">
@@ -193,7 +221,9 @@
     <div class="modal-corpo">
       <div class="grupo-titulo">Escrevendo na barra de captura</div>
       <table class="tabela-ajuda">
+        <tr><td><code>%trabalho</code> <code>%pessoal</code></td><td>manda para a área (separa vida pessoal de trabalho; cria área nova se quiser)</td></tr>
         <tr><td><code>#projeto</code></td><td>joga a anotação no projeto (cria se não existir)</td></tr>
+        <tr><td><code>+nota</code> <code>+ideia</code> <code>+lembrete</code></td><td>tipo da anotação (sem isso, é <code>+tarefa</code>)</td></tr>
         <tr><td><code>@tag</code></td><td>marca com etiqueta</td></tr>
         <tr><td><code>!hoje</code> <code>!amanha</code></td><td>prazo hoje / amanhã</td></tr>
         <tr><td><code>!seg</code> … <code>!dom</code></td><td>próxima segunda … domingo</td></tr>
@@ -202,7 +232,9 @@
         <tr><td><code>*</code></td><td>fixa no topo</td></tr>
         <tr><td><code>: detalhe</code></td><td>tudo depois de <code>::</code> vai para os detalhes</td></tr>
       </table>
-      <p class="nota">Exemplo: <code>* Ajustar retorno da API de saldo #erp !amanha @chefe :: chefe pediu no daily, ver endpoint /saldo/v2</code></p>
+      <p class="nota">Trabalho: <code>* Ajustar retorno da API de saldo %trabalho #erp !amanha @chefe :: pediu no daily, ver /saldo/v2</code></p>
+      <p class="nota">Pessoal: <code>Levar o carro na revisão %pessoal #carro !sab +lembrete</code></p>
+      <p class="nota">Dica: com uma área selecionada na lateral, tudo que você anotar já entra nela — não precisa digitar <code>%</code> toda hora.</p>
 
       <div class="grupo-titulo">Atalhos</div>
       <table class="tabela-ajuda">
@@ -214,6 +246,7 @@
         <tr><td><code>f</code></td><td>fixa / desfixa</td></tr>
         <tr><td><code>Del</code></td><td>apaga a selecionada</td></tr>
         <tr><td><code>Ctrl+Enter</code></td><td>no editor: salvar</td></tr>
+        <tr><td><code>1</code> <code>2</code> <code>3</code>…</td><td>troca de área (1 = todas)</td></tr>
         <tr><td><code>s</code></td><td>sincronizar agora</td></tr>
         <tr><td><code>Esc</code></td><td>fecha modal / limpa busca</td></tr>
       </table>
@@ -224,8 +257,8 @@
 <div class="aviso-flutuante" id="toast" hidden></div>
 
 <script src="js/util.js"></script>
-<script src="js/parse.js"></script>
 <script src="js/store.js"></script>
+<script src="js/parse.js"></script>
 <script src="js/github.js"></script>
 <script src="js/app.js"></script>
 </body>

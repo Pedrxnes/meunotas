@@ -1,10 +1,23 @@
 /* ===== MeuNotas — interpretação da barra de captura =====
-   Sintaxe:  texto  #projeto  @tag  !prazo  *  :: detalhes
+   Sintaxe:  texto  %area  #projeto  +tipo  @tag  !prazo  *  :: detalhes
 */
 var P = (function () {
   'use strict';
 
   var SEMANA = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 };
+
+  /** apelidos digitáveis para os tipos de anotação */
+  var APELIDOS_TIPO = {
+    tarefa: 'tarefa', tarefas: 'tarefa', task: 'tarefa', fazer: 'tarefa',
+    nota: 'nota', notas: 'nota', anotacao: 'nota', info: 'nota',
+    ideia: 'ideia', ideias: 'ideia', idea: 'ideia',
+    lembrete: 'lembrete', lembrar: 'lembrete', lembra: 'lembrete', alarme: 'lembrete'
+  };
+
+  function interpretarTipo(bruto) {
+    var t = U.normalizar(bruto).trim();
+    return APELIDOS_TIPO[t] || null;
+  }
 
   /** próxima ocorrência do dia da semana (hoje conta) */
   function proximoDiaSemana(alvo) {
@@ -77,13 +90,18 @@ var P = (function () {
       texto = texto.slice(0, corte);
     }
 
-    var projeto = '', tags = [], prazo = '', fixado = false, sobrou = [];
+    var area = '', projeto = '', tipo = '', tags = [], prazo = '', fixado = false, sobrou = [];
 
     texto.split(/\s+/).forEach(function (tk) {
       if (!tk) return;
       if (tk === '*') { fixado = true; return; }
+      if (tk.charAt(0) === '%' && tk.length > 1) { area = tk.slice(1).replace(/[_]+/g, ' ').trim(); return; }
       if (tk.charAt(0) === '#' && tk.length > 1) { projeto = tk.slice(1).replace(/[_]+/g, ' ').trim(); return; }
       if (tk.charAt(0) === '@' && tk.length > 1) { tags.push(tk.slice(1)); return; }
+      if (tk.charAt(0) === '+' && tk.length > 1) {
+        var t = interpretarTipo(tk.slice(1));
+        if (t) { tipo = t; return; }
+      }
       if (tk.charAt(0) === '!' && tk.length > 1) {
         var p = interpretarPrazo(tk.slice(1));
         if (p) { prazo = p; return; }
@@ -94,7 +112,10 @@ var P = (function () {
     var titulo = sobrou.join(' ').trim();
     if (titulo.charAt(0) === '*') { fixado = true; titulo = titulo.slice(1).trim(); }
 
-    return { titulo: titulo, detalhes: detalhes, projeto: projeto, tags: tags, prazo: prazo, fixado: fixado };
+    return {
+      titulo: titulo, detalhes: detalhes, area: area, projeto: projeto,
+      tipo: tipo, tags: tags, prazo: prazo, fixado: fixado
+    };
   }
 
   /** resumo do que foi entendido, para mostrar embaixo da barra */
@@ -102,6 +123,8 @@ var P = (function () {
     if (!String(linha || '').trim()) return '';
     var r = interpretar(linha);
     var partes = [];
+    if (r.area) partes.push('área <b>' + U.escapar(r.area) + '</b>');
+    if (r.tipo) partes.push('tipo <b>' + U.escapar(S.tipoPorId(r.tipo).rotulo) + '</b>');
     if (r.projeto) partes.push('projeto <b>' + U.escapar(r.projeto) + '</b>');
     if (r.prazo) partes.push('prazo <b>' + U.prazoLegivel(r.prazo) + '</b> (' + r.prazo.split('-').reverse().join('/') + ')');
     if (r.tags.length) partes.push('tags <b>' + U.escapar(r.tags.join(', ')) + '</b>');
@@ -111,5 +134,8 @@ var P = (function () {
     return '↳ ' + partes.join(' · ');
   }
 
-  return { interpretar: interpretar, interpretarPrazo: interpretarPrazo, previa: previa };
+  return {
+    interpretar: interpretar, interpretarPrazo: interpretarPrazo,
+    interpretarTipo: interpretarTipo, previa: previa
+  };
 })();
