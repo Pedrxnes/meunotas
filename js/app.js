@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var vista = { area: '', visao: 'hoje', projeto: '', tipos: [], busca: '', selecionado: '', editando: '' };
+  var vista = { area: '', visao: 'hoje', projeto: '', tipos: [], busca: '', selecionado: '', editando: '', criando: false };
   var ultimoApagado = null;
   var GRUPOS = ['Atrasadas', 'Hoje', 'Amanhã', 'Próximos 7 dias', 'Mais adiante', 'Sem prazo', 'Concluídas'];
 
@@ -182,7 +182,7 @@
     if (!itens.length) {
       alvo.innerHTML = '<div class="vazio"><div class="grande">' + (vista.busca ? '⌕' : '✓') + '</div>' +
         (vista.busca ? 'Nada encontrado para “' + U.escapar(vista.busca) + '”.'
-          : 'Nada aqui. Anota algo na barra de cima.') + '</div>';
+          : 'Nada aqui. Anota na barra de cima ou clica em ＋ Nova.') + '</div>';
       return;
     }
 
@@ -669,6 +669,7 @@
 
     switch (ev.key) {
       case 'n': ev.preventDefault(); U.el('#entrada').focus(); break;
+      case 'N': ev.preventDefault(); abrirNova(); break;
       case '/': ev.preventDefault(); U.el('#busca').focus(); break;
       case 's': ev.preventDefault(); G.configurado() ? G.sincronizar() : abrirConfig(); break;
       case '?': abrirModal('#modal-ajuda'); break;
@@ -708,6 +709,7 @@
   function fecharModais() {
     U.els('.fundo-modal').forEach(function (f) { f.hidden = true; });
     vista.editando = '';
+    vista.criando = false;
   }
 
   function ligarEditor() {
@@ -717,12 +719,51 @@
       fecharModais();
       if (id) apagarComDesfazer(id);
     });
+    U.el('#btn-nova-nota').addEventListener('click', function () { abrirNova(); });
+  }
+
+  /** listas de sugestão dos campos área/projeto */
+  function preencherDatalists() {
+    U.el('#datalist-projetos').innerHTML = S.nomesDeProjeto('').map(function (n) {
+      return '<option value="' + U.escapar(n) + '">';
+    }).join('');
+    U.el('#datalist-areas').innerHTML = S.nomesDeArea().map(function (n) {
+      return '<option value="' + U.escapar(n) + '">';
+    }).join('');
+  }
+
+  function opcoesDeTipo(selecionado) {
+    return S.TIPOS.map(function (t) {
+      return '<option value="' + t.id + '"' + (t.id === selecionado ? ' selected' : '') + '>' + t.icone + '  ' + t.rotulo + '</option>';
+    }).join('');
+  }
+
+  /** formulário em branco, já herdando o contexto aberto (mesma regra da barra rápida) */
+  function abrirNova() {
+    vista.editando = '';
+    vista.criando = true;
+    U.el('#modal-item-titulo').textContent = 'Nova anotação';
+    U.el('#ed-titulo').value = '';
+    U.el('#ed-detalhes').value = '';
+    U.el('#ed-area').value = (vista.area && vista.area !== 'sem-area') ? vista.area : '';
+    U.el('#ed-projeto').value = vista.visao === 'projeto' ? vista.projeto : '';
+    U.el('#ed-prazo').value = vista.visao === 'hoje' ? U.hoje() : '';
+    U.el('#ed-tags').value = '';
+    U.el('#ed-fixado').checked = false;
+    U.el('#ed-tipo').innerHTML = opcoesDeTipo(vista.tipos.length === 1 ? vista.tipos[0] : 'tarefa');
+    preencherDatalists();
+    U.el('#ed-meta').textContent = 'Dá para escrever atalhos no título também (%area #projeto !amanha @tag) — eles viram campos ao salvar.';
+    U.el('#ed-apagar').hidden = true;
+    U.el('#ed-salvar').textContent = 'Criar';
+    abrirModal('#modal-item');
+    setTimeout(function () { U.el('#ed-titulo').focus(); }, 30);
   }
 
   function abrirEditor(id) {
     var it = S.porId(id);
     if (!it) return;
     vista.editando = id;
+    vista.criando = false;
     U.el('#modal-item-titulo').textContent = 'Editar anotação';
     U.el('#ed-titulo').value = it.titulo;
     U.el('#ed-detalhes').value = it.detalhes;
@@ -731,25 +772,18 @@
     U.el('#ed-prazo').value = it.prazo || '';
     U.el('#ed-tags').value = it.tags.join(' ');
     U.el('#ed-fixado').checked = it.fixado;
-    U.el('#ed-tipo').innerHTML = S.TIPOS.map(function (t) {
-      return '<option value="' + t.id + '"' + (t.id === it.tipo ? ' selected' : '') + '>' + t.icone + '  ' + t.rotulo + '</option>';
-    }).join('');
-    U.el('#datalist-projetos').innerHTML = S.nomesDeProjeto('').map(function (n) {
-      return '<option value="' + U.escapar(n) + '">';
-    }).join('');
-    U.el('#datalist-areas').innerHTML = S.nomesDeArea().map(function (n) {
-      return '<option value="' + U.escapar(n) + '">';
-    }).join('');
+    U.el('#ed-tipo').innerHTML = opcoesDeTipo(it.tipo);
+    preencherDatalists();
     U.el('#ed-meta').textContent = 'Criada em ' + U.dataHoraLegivel(it.criadoEm) +
       ' · alterada em ' + U.dataHoraLegivel(it.atualizadoEm) + (it.feito ? ' · concluída em ' + U.dataHoraLegivel(it.feitoEm) : '');
+    U.el('#ed-apagar').hidden = false;
+    U.el('#ed-salvar').textContent = 'Salvar';
     abrirModal('#modal-item');
     setTimeout(function () { U.el('#ed-titulo').focus(); }, 30);
   }
 
-  function salvarEditor() {
-    var id = vista.editando;
-    if (!id) return;
-    S.atualizar(id, {
+  function lerFormularioItem() {
+    return {
       titulo: U.el('#ed-titulo').value.trim(),
       detalhes: U.el('#ed-detalhes').value,
       area: U.el('#ed-area').value.trim(),
@@ -758,9 +792,41 @@
       prazo: U.el('#ed-prazo').value || '',
       tags: U.el('#ed-tags').value.split(/[\s,]+/).filter(Boolean),
       fixado: U.el('#ed-fixado').checked
-    });
+    };
+  }
+
+  function salvarEditor() {
+    if (vista.criando) { criarPeloFormulario(); return; }
+    var id = vista.editando;
+    if (!id) return;
+    S.atualizar(id, lerFormularioItem());
     fecharModais();
     U.toast('Salvo');
+  }
+
+  /** o título ainda passa pelo interpretador; atalho digitado vence o campo, que já vem do contexto */
+  function criarPeloFormulario() {
+    var f = lerFormularioItem();
+    if (!f.titulo && !f.detalhes.trim()) {
+      U.el('#ed-titulo').focus();
+      U.toast('Escreva ao menos um título');
+      return;
+    }
+    var campos = P.interpretar(f.titulo);
+    campos.detalhes = [campos.detalhes, f.detalhes].filter(function (t) { return String(t || '').trim(); }).join('\n');
+    campos.area = campos.area || f.area;
+    campos.projeto = campos.projeto || f.projeto;
+    campos.tipo = campos.tipo || f.tipo;
+    campos.prazo = campos.prazo || f.prazo;
+    campos.tags = f.tags.concat(campos.tags || []).filter(function (t, i, a) { return a.indexOf(t) === i; });
+    campos.fixado = f.fixado || campos.fixado;
+
+    var it = S.adicionar(campos);
+    if (!it) { U.toast('Nada para criar'); return; }
+    fecharModais();
+    U.toast('Criada' + (it.area ? ' em ' + it.area : '') + (it.projeto ? ' / ' + it.projeto : '') +
+      (it.prazo ? ' · ' + U.prazoLegivel(it.prazo) : ''));
+    selecionar(it.id);
   }
 
   /* ---------------- configuração ---------------- */

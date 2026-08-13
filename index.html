@@ -69,6 +69,7 @@
       <input id="entrada" type="text" autocomplete="off" spellcheck="false"
              placeholder="Anota rápido e dá Enter…   %area  #projeto  +ideia  !amanha  !12/03  @tag  * fixar">
       <button class="botao-primario" id="btn-add">Anotar</button>
+      <button class="botao-secundario" id="btn-nova-nota" title="Criar anotação em formulário (N)">＋ Nova</button>
     </div>
     <div class="captura-dica" id="captura-dica"></div>
 
@@ -219,6 +220,9 @@
   <div class="modal">
     <div class="modal-topo"><strong>Como usar</strong><button class="botao-icone" data-fechar-modal>×</button></div>
     <div class="modal-corpo">
+      <div class="grupo-titulo">Duas formas de criar</div>
+      <p class="nota">Rápida: escreve na barra de cima e dá Enter. Completa: botão <b>＋ Nova</b> (ou <code>N</code>) abre um formulário com área, projeto, tipo, prazo, tags e detalhes.</p>
+
       <div class="grupo-titulo">Escrevendo na barra de captura</div>
       <table class="tabela-ajuda">
         <tr><td><code>%trabalho</code> <code>%pessoal</code></td><td>manda para a área (separa vida pessoal de trabalho; cria área nova se quiser)</td></tr>
@@ -239,6 +243,7 @@
       <div class="grupo-titulo">Atalhos</div>
       <table class="tabela-ajuda">
         <tr><td><code>n</code></td><td>foco na barra de captura</td></tr>
+        <tr><td><code>N</code> (Shift+n)</td><td>abre o formulário de nova anotação</td></tr>
         <tr><td><code>Ctrl+K</code> / <code>/</code></td><td>foco na busca</td></tr>
         <tr><td><code>j</code> / <code>k</code></td><td>desce / sobe na lista</td></tr>
         <tr><td><code>x</code> ou <code>Espaço</code></td><td>marca / desmarca concluída</td></tr>

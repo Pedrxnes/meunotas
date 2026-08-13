@@ -177,6 +177,11 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
 .botao:hover { border-color: var(--borda-forte); }
 .botao-primario { height: 44px; background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 600; }
 .captura .botao-primario { min-width: 92px; }
+.botao-secundario {
+  height: 44px; padding: 0 14px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  background: var(--fundo-3); border: 1px solid var(--borda-forte); color: var(--texto); font-weight: 600;
+}
+.botao-secundario:hover { border-color: var(--acento); color: var(--acento); }
 .botao-primario:hover { filter: brightness(1.08); }
 .modal-pe .botao-primario { height: 34px; }
 .botao-perigo { background: transparent; border-color: var(--borda); color: var(--perigo); }
@@ -321,4 +326,6 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
   .topo-acoes .botao-icone#btn-ajuda { display: none; }
   #pill-texto { display: none; }
   .pill { padding: 0 9px; }
+  .captura .botao-primario { min-width: 0; padding: 0 12px; }
+  #btn-nova-nota { padding: 0 12px; }
 }
