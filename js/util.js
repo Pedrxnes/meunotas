@@ -74,11 +74,66 @@ var U = (function () {
     return saida;
   }
 
-  /** cor estável a partir do nome do projeto */
+  /* ---------- cores ---------- */
+
+  /** só aceita #rgb / #rrggbb; devolve '' quando não serve (dado velho, lixo, vazio) */
+  function corValida(cor) {
+    var s = String(cor == null ? '' : cor).trim();
+    if (/^#[0-9a-f]{3}$/i.test(s)) return ('#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3]).toLowerCase();
+    return /^#[0-9a-f]{6}$/i.test(s) ? s.toLowerCase() : '';
+  }
+
+  function doisDigitos(n) {
+    var h = Math.max(0, Math.min(255, Math.round(n))).toString(16);
+    return h.length === 1 ? '0' + h : h;
+  }
+
+  function hslParaHex(h, s, l) {
+    h = ((h % 360) + 360) % 360; s = s / 100; l = l / 100;
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = l - c / 2;
+    var r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return '#' + doisDigitos((r + m) * 255) + doisDigitos((g + m) * 255) + doisDigitos((b + m) * 255);
+  }
+
+  /** cor automática, estável a partir do nome — usada enquanto ninguém escolheu uma */
   function corDoNome(nome) {
     var h = 0, s = normalizar(nome);
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
-    return 'hsl(' + h + ' 65% 58%)';
+    return hslParaHex(h, 65, 58);
+  }
+
+  function paraRgb(cor) {
+    var hex = corValida(cor);
+    if (!hex) return [111, 119, 137];
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
+
+  function corComAlfa(cor, a) {
+    var c = paraRgb(cor);
+    return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
+  }
+
+  function escurecer(cor, fator) {
+    var c = paraRgb(cor);
+    return '#' + doisDigitos(c[0] * (1 - fator)) + doisDigitos(c[1] * (1 - fator)) + doisDigitos(c[2] * (1 - fator));
+  }
+
+  /** preto ou branco — o que se lê melhor por cima da cor escolhida */
+  function contrasteDe(cor) {
+    var c = paraRgb(cor).map(function (v) {
+      v = v / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    var lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    return lum > 0.42 ? '#12141a' : '#ffffff';
   }
 
   function debounce(fn, ms) {
@@ -117,7 +172,9 @@ var U = (function () {
   return {
     id: id, agora: agora, hoje: hoje, dataParaTexto: dataParaTexto, textoParaData: textoParaData,
     somaDias: somaDias, diasAte: diasAte, prazoLegivel: prazoLegivel, dataHoraLegivel: dataHoraLegivel,
-    escapar: escapar, normalizar: normalizar, dobrar: dobrar, corDoNome: corDoNome, debounce: debounce,
+    escapar: escapar, normalizar: normalizar, dobrar: dobrar, debounce: debounce,
+    corDoNome: corDoNome, corValida: corValida, hslParaHex: hslParaHex,
+    corComAlfa: corComAlfa, escurecer: escurecer, contrasteDe: contrasteDe,
     paraBase64: paraBase64, deBase64: deBase64, el: el, els: els, toast: toast,
     DIAS_SEMANA: DIAS_SEMANA
   };

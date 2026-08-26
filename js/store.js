@@ -19,6 +19,15 @@ var S = (function () {
   ];
   var IDS_TIPO = TIPOS.map(function (t) { return t.id; });
 
+  /** cores oferecidas na paleta do projeto (dá para escolher qualquer outra no seletor livre) */
+  var PALETA = [
+    '#ef4444', '#f97316', '#f59e0b', '#eab308',
+    '#84cc16', '#22c55e', '#10b981', '#14b8a6',
+    '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+    '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e',
+    '#78716c', '#64748b'
+  ];
+
   function tipoPorId(id) {
     for (var i = 0; i < TIPOS.length; i++) if (TIPOS[i].id === id) return TIPOS[i];
     return TIPOS[0];
@@ -57,12 +66,24 @@ var S = (function () {
     }).filter(function (p) { return p.nome; }) : [];
   }
 
+  /** projetos guardam também a cor escolhida (cor vazia = automática pelo nome) */
+  function listaDeProjetos(bruto) {
+    return Array.isArray(bruto) ? bruto.filter(Boolean).map(function (p) {
+      if (typeof p === 'string') return { nome: p.trim(), cor: '', corEm: '' };
+      return {
+        nome: String(p.nome || '').trim(),
+        cor: U.corValida(p.cor),
+        corEm: String(p.corEm || '')
+      };
+    }).filter(function (p) { return p.nome; }) : [];
+  }
+
   function normalizarPacote(bruto) {
     var d = bruto && typeof bruto === 'object' ? bruto : {};
     return {
       v: 2,
       itens: Array.isArray(d.itens) ? d.itens.map(normalizarItem) : [],
-      projetos: listaDeNomes(d.projetos),
+      projetos: listaDeProjetos(d.projetos),
       areas: listaDeNomes(d.areas),
       atualizadoEm: d.atualizadoEm || U.agora()
     };
@@ -143,7 +164,51 @@ var S = (function () {
     if (!existe) lista.push({ nome: nome });
   }
 
-  function registrarProjeto(nome) { registrarEm(dados.projetos, nome); }
+  function registrarProjeto(nome) {
+    nome = String(nome || '').trim();
+    if (!nome) return;
+    if (!projetoPorNome(nome)) dados.projetos.push({ nome: nome, cor: '', corEm: '' });
+  }
+
+  /* ---------- cor do projeto ---------- */
+
+  function projetoPorNome(nome) {
+    var alvo = U.normalizar(nome);
+    if (!alvo) return null;
+    for (var i = 0; i < dados.projetos.length; i++) {
+      if (U.normalizar(dados.projetos[i].nome) === alvo) return dados.projetos[i];
+    }
+    return null;
+  }
+
+  /** cor escolhida pelo usuário, ou '' quando ainda está no automático */
+  function corEscolhida(nome) {
+    var p = projetoPorNome(nome);
+    return p ? U.corValida(p.cor) : '';
+  }
+
+  /** a cor que a interface deve pintar: a escolhida, ou a automática do nome */
+  function corDoProjeto(nome) {
+    return corEscolhida(nome) || U.corDoNome(nome);
+  }
+
+  /** cor vazia volta o projeto para a cor automática */
+  function definirCorProjeto(nome, cor) {
+    nome = nomeCanonico(nome);          // "erp" digitado pinta o projeto "ERP" já existente
+    if (!nome) return '';
+    var limpa = U.corValida(cor);
+    var p = projetoPorNome(nome);
+    if (!p && !limpa) return corDoProjeto(nome);      // nada a fazer: já era automático
+    if (!p) {
+      p = { nome: nome, cor: '', corEm: '' };
+      dados.projetos.push(p);
+    }
+    if (U.corValida(p.cor) === limpa) return corDoProjeto(nome);
+    p.cor = limpa;
+    p.corEm = U.agora();
+    salvar(true);
+    return corDoProjeto(nome);
+  }
 
   function registrarArea(nome) {
     nome = String(nome || '').trim();
@@ -236,11 +301,19 @@ var S = (function () {
 
   function renomearProjeto(antigo, novo) {
     novo = String(novo || '').trim();
+    var anterior = projetoPorNome(antigo);
+    var cor = anterior ? U.corValida(anterior.cor) : '';
+    var corEm = anterior ? anterior.corEm : '';
     vivos().forEach(function (i) {
       if (i.projeto === antigo) { i.projeto = novo; i.atualizadoEm = U.agora(); }
     });
     dados.projetos = dados.projetos.filter(function (p) { return p.nome !== antigo; });
-    if (novo) registrarProjeto(novo);
+    if (novo) {
+      registrarProjeto(novo);
+      // a cor acompanha o nome novo
+      var p = projetoPorNome(novo);
+      if (p && cor && !U.corValida(p.cor)) { p.cor = cor; p.corEm = corEm || U.agora(); }
+    }
     salvar(true);
   }
 
@@ -408,10 +481,25 @@ var S = (function () {
       return Object.keys(nomes).map(function (nome) { return { nome: nome }; });
     }
 
+    /** projetos: vence a cor com o carimbo mais novo; no empate, ter cor vence não ter */
+    function uniaoProjetos(x, y) {
+      var porNome = Object.create(null);
+      x.concat(y).forEach(function (p) {
+        var atual = porNome[p.nome];
+        if (!atual) { porNome[p.nome] = { nome: p.nome, cor: p.cor || '', corEm: p.corEm || '' }; return; }
+        var novo = String(p.corEm || ''), velho = String(atual.corEm || '');
+        if (novo > velho || (novo === velho && !atual.cor && !!p.cor)) {
+          atual.cor = p.cor || '';
+          atual.corEm = p.corEm || '';
+        }
+      });
+      return Object.keys(porNome).map(function (k) { return porNome[k]; });
+    }
+
     return {
       v: 2,
       itens: itens,
-      projetos: uniao(a.projetos, b.projetos),
+      projetos: uniaoProjetos(a.projetos, b.projetos),
       areas: uniao(a.areas, b.areas),
       atualizadoEm: U.agora()
     };
@@ -430,7 +518,8 @@ var S = (function () {
         return [i.id, i.titulo, i.detalhes, i.area, i.projeto, i.tipo, i.tags.join(','), i.prazo,
           i.feito ? 1 : 0, i.fixado ? 1 : 0, i.apagado ? 1 : 0, i.atualizadoEm].join('|');
       });
-    var projetos = d.projetos.map(function (p) { return p.nome; }).sort();
+    // a cor entra na assinatura: trocar a cor de um projeto também precisa subir para o GitHub
+    var projetos = d.projetos.map(function (p) { return p.nome + '|' + (p.cor || '') + '|' + (p.corEm || ''); }).sort();
     var areas = d.areas.map(function (a) { return a.nome; }).sort();
     return JSON.stringify([itens, projetos, areas]);
   }
@@ -500,7 +589,8 @@ var S = (function () {
     salvarPrefs: salvarPrefs,
     vivos: vivos, porId: porId, nomesDeProjeto: nomesDeProjeto, registrarProjeto: registrarProjeto,
     nomesDeArea: nomesDeArea, registrarArea: registrarArea, temSemArea: temSemArea, moverParaArea: moverParaArea,
-    TIPOS: TIPOS, tipoPorId: tipoPorId, AREAS_PADRAO: AREAS_PADRAO,
+    TIPOS: TIPOS, tipoPorId: tipoPorId, AREAS_PADRAO: AREAS_PADRAO, PALETA: PALETA,
+    corDoProjeto: corDoProjeto, corEscolhida: corEscolhida, definirCorProjeto: definirCorProjeto,
     adicionar: adicionar, atualizar: atualizar, alternarFeito: alternarFeito, alternarFixado: alternarFixado,
     apagar: apagar, restaurar: restaurar, renomearProjeto: renomearProjeto, renomearArea: renomearArea,
     limparConcluidas: limparConcluidas,

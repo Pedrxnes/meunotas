@@ -124,6 +124,33 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
 .conta.alerta:not(:empty) { color: var(--alerta); font-weight: 700; }
 .bolinha { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
 
+/* alvo de toque em volta da bolinha do projeto — abre a paleta de cores */
+.bolinha-alvo {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; flex: 0 0 22px;
+  margin: -3px -4px -3px -5px; border-radius: 7px; cursor: pointer;
+}
+.bolinha-alvo:hover { background: var(--fundo); box-shadow: inset 0 0 0 1px var(--borda-forte); }
+.bolinha-alvo .bolinha { width: 11px; height: 11px; flex: 0 0 11px; }
+
+/* botão “Cor”, no cabeçalho da lista e ao lado do campo Projeto */
+.botao-cor {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 30px; padding: 0 11px; white-space: nowrap;
+  background: var(--fundo-2); border: 1px solid var(--borda);
+  border-radius: 999px; color: var(--texto-2); cursor: pointer; font-size: 12.5px;
+}
+.botao-cor:hover { border-color: var(--borda-forte); color: var(--texto); }
+.botao-cor[hidden] { display: none; }
+.botao-cor .amostra {
+  width: 13px; height: 13px; border-radius: 50%; flex: 0 0 13px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.botao-cor.sem-cor .amostra { box-shadow: inset 0 0 0 1px var(--borda-forte); }
+.campo-com-botao { display: flex; gap: 8px; align-items: center; }
+.campo-com-botao input { flex: 1; min-width: 0; }
+.campo-com-botao .botao-cor { height: 37px; flex: 0 0 auto; }
+
 /* ===== áreas (separação trabalho / pessoal) ===== */
 .areas { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 6px 2px; }
 .area {
@@ -203,12 +230,39 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
 /* ===== itens ===== */
 .faixa-dia { font-size: 11px; text-transform: uppercase; letter-spacing: .9px; color: var(--texto-3); font-weight: 700; margin: 18px 0 7px; }
 .item {
-  display: flex; gap: 11px; align-items: flex-start;
-  padding: 10px 12px; margin-bottom: 6px;
+  margin-bottom: 6px; overflow: hidden;
   background: var(--fundo-2); border: 1px solid var(--borda);
   border-left: 3px solid var(--borda); border-radius: var(--raio);
   cursor: default;
 }
+.item-corpo { display: flex; gap: 11px; align-items: flex-start; padding: 10px 12px; }
+
+/* ===== barra do projeto (topo do cartão) ===== */
+.item-barra {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px; min-height: 28px;
+  font-size: 11.5px; line-height: 1.3;
+}
+.item-barra.com-projeto {
+  background: var(--cor-projeto, var(--fundo-3));
+  color: var(--cor-projeto-texto, var(--texto));
+  border-bottom: 1px solid var(--cor-projeto-borda, var(--borda));
+}
+.item-barra.sem-projeto {
+  background: var(--fundo-3); color: var(--texto-2);
+  border-bottom: 1px solid var(--borda);
+}
+.barra-projeto {
+  font-weight: 800; letter-spacing: .7px; text-transform: uppercase;
+  cursor: pointer; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.barra-projeto:hover { text-decoration: underline; }
+.item-barra.com-projeto .barra-tipo { margin-left: auto; opacity: .88; }
+.barra-tipo {
+  font-weight: 600; cursor: pointer; white-space: nowrap; flex: 0 0 auto;
+}
+.barra-tipo:hover { opacity: 1; text-decoration: underline; }
 .item:hover { border-color: var(--borda-forte); }
 .item.selecionado { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento-fundo); }
 .item.feito { opacity: .5; }
@@ -274,6 +328,32 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
   border-radius: 14px; box-shadow: var(--sombra);
 }
 .modal.largo { width: min(760px, 100%); }
+.modal.magro { width: min(400px, 100%); }
+.fundo-modal.acima { z-index: 60; }
+
+/* ===== paleta de cores do projeto ===== */
+.previa-barra {
+  display: flex; align-items: center;
+  padding: 9px 13px; border-radius: 9px;
+  font-size: 12px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.paleta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.amostra-paleta {
+  height: 38px; border-radius: 9px; cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, .25);
+  font-size: 15px; font-weight: 900; line-height: 1;
+  display: grid; place-items: center;
+}
+.amostra-paleta .tique { opacity: 0; }
+.amostra-paleta.escolhida .tique { opacity: 1; }
+.amostra-paleta.escolhida { box-shadow: 0 0 0 2px var(--fundo-2), 0 0 0 4px var(--texto); }
+.amostra-paleta:hover { transform: translateY(-1px); }
+#cor-livre {
+  width: 46px; height: 34px; padding: 2px; cursor: pointer;
+  background: var(--fundo-3); border: 1px solid var(--borda); border-radius: 8px;
+}
+.rotulo-cor { font-size: 12.5px; color: var(--texto-2); }
 .modal-topo { display: flex; align-items: center; padding: 13px 15px; border-bottom: 1px solid var(--borda); }
 .modal-topo strong { flex: 1; }
 .modal-corpo { padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 13px; }

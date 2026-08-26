@@ -77,6 +77,9 @@
 
     <div class="cabecalho-lista">
       <h1 id="titulo-lista">Hoje</h1>
+      <button class="botao-cor" id="btn-cor-projeto" hidden title="Escolher a cor deste projeto">
+        <span class="amostra" id="amostra-cor-projeto"></span>Cor
+      </button>
       <div class="cabecalho-acoes">
         <select id="ordem" title="Ordenar">
           <option value="prazo">Prazo</option>
@@ -114,11 +117,16 @@
           <input id="ed-area" type="text" list="datalist-areas" spellcheck="false" placeholder="sem área">
           <datalist id="datalist-areas"></datalist>
         </label>
-        <label class="campo">
+        <div class="campo">
           <span>Projeto</span>
-          <input id="ed-projeto" type="text" list="datalist-projetos" spellcheck="false" placeholder="sem projeto">
+          <div class="campo-com-botao">
+            <input id="ed-projeto" type="text" list="datalist-projetos" spellcheck="false" placeholder="sem projeto">
+            <button type="button" class="botao-cor" id="ed-cor-projeto" title="Cor deste projeto">
+              <span class="amostra" id="ed-amostra-cor"></span>Cor
+            </button>
+          </div>
           <datalist id="datalist-projetos"></datalist>
-        </label>
+        </div>
       </div>
       <div class="campo-linha">
         <label class="campo estreito">
@@ -147,6 +155,30 @@
       <span class="espaco"></span>
       <button class="botao" data-fechar-modal>Cancelar</button>
       <button class="botao-primario" id="ed-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ modal: cor do projeto ============ -->
+<div class="fundo-modal acima" id="modal-cor" hidden>
+  <div class="modal magro">
+    <div class="modal-topo">
+      <strong>Cor do projeto</strong>
+      <button class="botao-icone" data-fechar-cor>×</button>
+    </div>
+    <div class="modal-corpo">
+      <div class="previa-barra" id="cor-previa"><span id="cor-previa-nome">projeto</span></div>
+      <p class="nota">Essa cor pinta a barra no topo de todas as anotações deste projeto e a bolinha na lateral.</p>
+      <div class="paleta" id="paleta-cores"></div>
+      <div class="linha-botoes">
+        <span class="rotulo-cor">Outra cor:</span>
+        <input type="color" id="cor-livre" value="#3b82f6">
+        <button class="botao" id="cor-auto">Voltar ao automático</button>
+      </div>
+    </div>
+    <div class="modal-pe">
+      <span class="espaco"></span>
+      <button class="botao-primario" data-fechar-cor>Pronto</button>
     </div>
   </div>
 </div>
@@ -239,6 +271,9 @@
       <p class="nota">Trabalho: <code>* Ajustar retorno da API de saldo %trabalho #erp !amanha @chefe :: pediu no daily, ver /saldo/v2</code></p>
       <p class="nota">Pessoal: <code>Levar o carro na revisão %pessoal #carro !sab +lembrete</code></p>
       <p class="nota">Dica: com uma área selecionada na lateral, tudo que você anotar já entra nela — não precisa digitar <code>%</code> toda hora.</p>
+
+      <div class="grupo-titulo">Cor dos projetos</div>
+      <p class="nota">Toda anotação com projeto ganha uma barra colorida no topo do cartão, com o nome do projeto e o tipo. Para escolher a cor, toque na <b>bolinha</b> do projeto na lateral, no botão <b>Cor</b> que aparece ao abrir um projeto, ou no botão <b>Cor</b> ao lado do campo Projeto no formulário. Sem escolha, a cor sai automática a partir do nome.</p>
 
       <div class="grupo-titulo">Atalhos</div>
       <table class="tabela-ajuda">

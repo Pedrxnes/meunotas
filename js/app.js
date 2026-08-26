@@ -127,7 +127,8 @@
       alvo.innerHTML = nomes.map(function (nome) {
         return '<button class="link-visao projeto' + (vista.visao === 'projeto' && vista.projeto === nome && !vista.busca ? ' ativo' : '') + '"' +
           ' data-projeto="' + U.escapar(nome) + '" title="' + U.escapar(nome) + ' — clique duplo renomeia">' +
-          '<span class="bolinha" style="background:' + U.corDoNome(nome) + '"></span>' +
+          '<span class="bolinha-alvo" data-cor-projeto="' + U.escapar(nome) + '" title="Mudar a cor de ' + U.escapar(nome) + '">' +
+          '<span class="bolinha" style="background:' + S.corDoProjeto(nome) + '"></span></span>' +
           '<span class="rotulo">' + U.escapar(nome) + '</span>' +
           '<span class="conta">' + (mapa[nome] || '') + '</span></button>';
       }).join('');
@@ -158,6 +159,14 @@
   function desenharCabecalho() {
     U.el('#titulo-lista').textContent = tituloDaVisao();
     U.el('#btn-limpar-busca').hidden = !vista.busca;
+
+    // com um projeto aberto, o botão de cor fica ao lado do título
+    var botao = U.el('#btn-cor-projeto');
+    var noProjeto = vista.visao === 'projeto' && vista.projeto && !vista.busca;
+    botao.hidden = !noProjeto;
+    if (noProjeto) {
+      U.el('#amostra-cor-projeto').style.background = S.corDoProjeto(vista.projeto);
+    }
   }
 
   function grupoDe(it) {
@@ -256,6 +265,30 @@
     }).join('');
   }
 
+  /** barra do topo do cartão: nome do projeto em destaque, na cor do projeto, e o tipo à direita */
+  function barraDoCartao(it) {
+    var tipo = S.tipoPorId(it.tipo);
+    var mostraTipo = it.tipo !== 'tarefa';
+    if (!it.projeto && !mostraTipo) return '';
+
+    var etiquetaTipo = mostraTipo
+      ? '<span class="barra-tipo" data-ir-tipo="' + it.tipo + '" title="' + U.escapar(tipo.dica) + '">' +
+        tipo.icone + ' ' + U.escapar(tipo.rotulo) + '</span>'
+      : '';
+
+    if (!it.projeto) {
+      return '<div class="item-barra sem-projeto">' + etiquetaTipo + '</div>';
+    }
+
+    var cor = S.corDoProjeto(it.projeto);
+    var estilo = '--cor-projeto:' + cor + ';--cor-projeto-texto:' + U.contrasteDe(cor) +
+      ';--cor-projeto-borda:' + U.corComAlfa(U.escurecer(cor, .45), .55);
+    return '<div class="item-barra com-projeto" style="' + estilo + '">' +
+      '<span class="barra-projeto" data-ir-projeto="' + U.escapar(it.projeto) + '" title="Ver só ' +
+      U.escapar(it.projeto) + '">' + U.escapar(it.projeto) + '</span>' +
+      etiquetaTipo + '</div>';
+  }
+
   function cartao(it) {
     var dias = it.prazo ? U.diasAte(it.prazo) : null;
     var classes = ['item'];
@@ -270,14 +303,6 @@
       chips += '<span class="chip area" data-ir-area="' + U.escapar(it.area) + '" title="área">' +
         '<span class="bolinha" style="background:' + U.corDoNome(it.area) + '"></span>' + U.escapar(it.area) + '</span>';
     }
-    if (it.tipo !== 'tarefa') {
-      var t = S.tipoPorId(it.tipo);
-      chips += '<span class="chip tipo" data-ir-tipo="' + it.tipo + '">' + t.icone + ' ' + t.rotulo + '</span>';
-    }
-    if (it.projeto) {
-      chips += '<span class="chip projeto" data-ir-projeto="' + U.escapar(it.projeto) + '">' +
-        '<span class="bolinha" style="background:' + U.corDoNome(it.projeto) + '"></span>' + U.escapar(it.projeto) + '</span>';
-    }
     if (it.prazo) {
       var cl = dias < 0 ? ' prazo-atrasado' : (dias === 0 ? ' prazo-hoje' : '');
       chips += '<span class="chip' + cl + '" title="' + it.prazo.split('-').reverse().join('/') + '">◔ ' + U.prazoLegivel(it.prazo) + '</span>';
@@ -286,6 +311,8 @@
     if (it.feito && it.feitoEm) chips += '<span class="chip">✓ ' + U.dataHoraLegivel(it.feitoEm) + '</span>';
 
     return '<div class="' + classes.join(' ') + '" data-id="' + it.id + '">' +
+      barraDoCartao(it) +
+      '<div class="item-corpo">' +
       '<input class="caixa" type="checkbox"' + (it.feito ? ' checked' : '') + ' title="Concluir (x)">' +
       '<div class="item-meio">' +
       '<div class="item-titulo">' + (it.fixado ? '★ ' : '') + realcar(it.titulo, vista.busca) + '</div>' +
@@ -296,7 +323,7 @@
       '<button class="acao' + (it.fixado ? ' on' : '') + '" data-acao="fixar" title="Fixar (f)">★</button>' +
       '<button class="acao" data-acao="editar" title="Editar (e)">✎</button>' +
       '<button class="acao" data-acao="apagar" title="Apagar (Del)">🗑</button>' +
-      '</div></div>';
+      '</div></div></div>';
   }
 
   function atualizarTituloAba() {
@@ -390,10 +417,19 @@
       });
     });
     U.el('#lista-projetos').addEventListener('click', function (ev) {
+      // a bolinha abre a paleta em vez de navegar
+      var bolinha = ev.target.closest('[data-cor-projeto]');
+      if (bolinha) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        abrirCorProjeto(bolinha.getAttribute('data-cor-projeto'));
+        return;
+      }
       var b = ev.target.closest('button[data-projeto]');
       if (b) irPara('projeto', b.getAttribute('data-projeto'));
     });
     U.el('#lista-projetos').addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('[data-cor-projeto]')) return;
       var b = ev.target.closest('button[data-projeto]');
       if (b) renomearProjetoNaLateral(b);
     });
@@ -443,7 +479,7 @@
     });
     lista.addEventListener('dblclick', function (ev) {
       var cartao = ev.target.closest('.item');
-      if (cartao && !ev.target.closest('input,button,[data-ir-projeto]')) abrirEditor(cartao.getAttribute('data-id'));
+      if (cartao && !ev.target.closest('input,button,[data-ir-projeto],[data-ir-tipo]')) abrirEditor(cartao.getAttribute('data-id'));
     });
 
     // topo
@@ -464,11 +500,13 @@
       b.addEventListener('click', function () { fecharModais(); });
     });
     U.els('.fundo-modal').forEach(function (f) {
+      if (f.id === 'modal-cor') return;   // esse fecha sozinho, sem derrubar o editor atrás
       f.addEventListener('mousedown', function (ev) { if (ev.target === f) fecharModais(); });
     });
 
     ligarEditor();
     ligarConfig();
+    ligarCorProjeto();
     document.addEventListener('keydown', atalhos);
   }
 
@@ -636,11 +674,15 @@
   function atalhos(ev) {
     var modalAberto = U.els('.fundo-modal').some(function (f) { return !f.hidden; });
 
+    var paletaAberta = !U.el('#modal-cor').hidden;
+
     if (ev.key === 'Escape') {
+      if (paletaAberta) { fecharCorProjeto(); return; }   // fecha só a paleta, mantém o editor atrás
       if (modalAberto) { fecharModais(); return; }
       if (vista.busca) { U.el('#busca').value = ''; vista.busca = ''; desenhar(); }
       return;
     }
+    if (paletaAberta) return;
     if (modalAberto) {
       if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey) && !U.el('#modal-item').hidden) {
         ev.preventDefault(); salvarEditor();
@@ -710,6 +752,88 @@
     U.els('.fundo-modal').forEach(function (f) { f.hidden = true; });
     vista.editando = '';
     vista.criando = false;
+    projetoDaPaleta = '';
+  }
+
+  /* ---------------- cor do projeto ---------------- */
+
+  var projetoDaPaleta = '';
+
+  function abrirCorProjeto(nome) {
+    nome = String(nome || '').trim();
+    if (!nome) { U.toast('Escolha ou escreva um projeto primeiro'); return; }
+    projetoDaPaleta = nome;
+    U.el('#cor-previa-nome').textContent = nome;
+    desenharPaleta();
+    U.el('#modal-cor').hidden = false;
+  }
+
+  function fecharCorProjeto() {
+    U.el('#modal-cor').hidden = true;
+    projetoDaPaleta = '';
+  }
+
+  function desenharPaleta() {
+    if (!projetoDaPaleta) return;
+    var atual = S.corDoProjeto(projetoDaPaleta);
+    var escolhida = S.corEscolhida(projetoDaPaleta);
+
+    U.el('#paleta-cores').innerHTML = S.PALETA.map(function (c) {
+      return '<button class="amostra-paleta' + (escolhida === c ? ' escolhida' : '') + '" data-cor="' + c + '"' +
+        ' title="' + c + '" style="background:' + c + ';color:' + U.contrasteDe(c) + '">' +
+        '<span class="tique">✓</span></button>';
+    }).join('');
+
+    pintarPrevia(atual);
+    U.el('#cor-livre').value = atual;
+    U.el('#cor-auto').hidden = !escolhida;
+  }
+
+  function pintarPrevia(cor) {
+    var previa = U.el('#cor-previa');
+    previa.style.background = cor;
+    previa.style.color = U.contrasteDe(cor);
+  }
+
+  /** cor vazia devolve o projeto para a cor automática do nome */
+  function aplicarCorProjeto(cor) {
+    if (!projetoDaPaleta) return;
+    S.definirCorProjeto(projetoDaPaleta, cor);
+    desenharPaleta();
+    atualizarAmostraEditor();
+  }
+
+  /** a bolinha ao lado do campo Projeto, no formulário de anotação */
+  function atualizarAmostraEditor() {
+    var nome = U.el('#ed-projeto').value.trim();
+    U.el('#ed-amostra-cor').style.background = nome ? S.corDoProjeto(nome) : 'transparent';
+    U.el('#ed-cor-projeto').classList.toggle('sem-cor', !nome);
+  }
+
+  function ligarCorProjeto() {
+    U.els('#modal-cor [data-fechar-cor]').forEach(function (b) {
+      b.addEventListener('click', fecharCorProjeto);
+    });
+    var fundo = U.el('#modal-cor');
+    fundo.addEventListener('mousedown', function (ev) { if (ev.target === fundo) fecharCorProjeto(); });
+
+    U.el('#paleta-cores').addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-cor]');
+      if (b) aplicarCorProjeto(b.getAttribute('data-cor'));
+    });
+
+    var livre = U.el('#cor-livre');
+    livre.addEventListener('input', function () { pintarPrevia(livre.value); });
+    livre.addEventListener('change', function () { aplicarCorProjeto(livre.value); });
+
+    U.el('#cor-auto').addEventListener('click', function () { aplicarCorProjeto(''); });
+    U.el('#btn-cor-projeto').addEventListener('click', function () { abrirCorProjeto(vista.projeto); });
+
+    U.el('#ed-cor-projeto').addEventListener('click', function (ev) {
+      ev.preventDefault();
+      abrirCorProjeto(U.el('#ed-projeto').value.trim());
+    });
+    U.el('#ed-projeto').addEventListener('input', atualizarAmostraEditor);
   }
 
   function ligarEditor() {
@@ -752,6 +876,7 @@
     U.el('#ed-fixado').checked = false;
     U.el('#ed-tipo').innerHTML = opcoesDeTipo(vista.tipos.length === 1 ? vista.tipos[0] : 'tarefa');
     preencherDatalists();
+    atualizarAmostraEditor();
     U.el('#ed-meta').textContent = 'Dá para escrever atalhos no título também (%area #projeto !amanha @tag) — eles viram campos ao salvar.';
     U.el('#ed-apagar').hidden = true;
     U.el('#ed-salvar').textContent = 'Criar';
@@ -774,6 +899,7 @@
     U.el('#ed-fixado').checked = it.fixado;
     U.el('#ed-tipo').innerHTML = opcoesDeTipo(it.tipo);
     preencherDatalists();
+    atualizarAmostraEditor();
     U.el('#ed-meta').textContent = 'Criada em ' + U.dataHoraLegivel(it.criadoEm) +
       ' · alterada em ' + U.dataHoraLegivel(it.atualizadoEm) + (it.feito ? ' · concluída em ' + U.dataHoraLegivel(it.feitoEm) : '');
     U.el('#ed-apagar').hidden = false;
