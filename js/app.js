@@ -478,6 +478,8 @@
       selecionar(id);
     });
     lista.addEventListener('dblclick', function (ev) {
+      var barra = ev.target.closest('.barra-projeto');
+      if (barra) { renomearProjetoNaBarra(barra); return; }
       var cartao = ev.target.closest('.item');
       if (cartao && !ev.target.closest('input,button,[data-ir-projeto],[data-ir-tipo]')) abrirEditor(cartao.getAttribute('data-id'));
     });
@@ -663,6 +665,35 @@
     campo.addEventListener('blur', function () { encerrar(true); });
     campo.addEventListener('click', function (ev) { ev.stopPropagation(); });
     campo.addEventListener('dblclick', function (ev) { ev.stopPropagation(); });
+  }
+
+  function renomearProjetoNaBarra(span) {
+    var antigo = span.getAttribute('data-ir-projeto');
+    var campo = document.createElement('input');
+    campo.type = 'text';
+    campo.value = antigo;
+    campo.style.cssText = 'flex:1;min-width:0;background:rgba(0,0,0,.15);border:1px solid currentColor;' +
+      'border-radius:5px;padding:0 4px;font:inherit;font-weight:800;color:inherit';
+    span.replaceWith(campo);
+    campo.focus();
+    campo.select();
+    function encerrar(salvar) {
+      var novo = campo.value.trim();
+      if (salvar && novo && novo !== antigo) {
+        S.renomearProjeto(antigo, novo);
+        if (vista.projeto === antigo) { vista.projeto = novo; S.prefs.projeto = novo; S.salvarPrefs(); }
+        U.toast('Projeto renomeado para ' + novo);
+      }
+      desenhar();
+    }
+    campo.addEventListener('keydown', function (ev) {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') encerrar(true);
+      if (ev.key === 'Escape') encerrar(false);
+    });
+    campo.addEventListener('click', function (ev) { ev.stopPropagation(); });
+    campo.addEventListener('dblclick', function (ev) { ev.stopPropagation(); });
+    campo.addEventListener('blur', function () { encerrar(true); });
   }
 
   /* ---------------- atalhos ---------------- */
