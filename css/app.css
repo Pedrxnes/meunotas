@@ -252,12 +252,6 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
   background: var(--fundo-3); color: var(--texto-2);
   border-bottom: 1px solid var(--borda);
 }
-.barra-projeto {
-  font-weight: 800; letter-spacing: .3px;
-  cursor: pointer; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.barra-projeto:hover { text-decoration: underline; }
 .item-barra.com-projeto .barra-tipo { margin-left: auto; opacity: .88; }
 .barra-tipo {
   font-weight: 600; cursor: pointer; white-space: nowrap; flex: 0 0 auto;
@@ -290,6 +284,8 @@ hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0; }
 }
 .chip.projeto, .chip.area, .chip.tipo { cursor: pointer; }
 .chip.projeto:hover, .chip.area:hover, .chip.tipo:hover { border-color: var(--borda-forte); }
+.chip.projeto.principal { font-weight: 700; letter-spacing: .2px; order: -1; }
+.chip.projeto.principal:hover { filter: brightness(1.08); }
 .chip.prazo-atrasado { color: var(--perigo); background: rgba(255, 95, 86, .12); font-weight: 600; }
 .chip.prazo-hoje { color: var(--alerta); background: rgba(255, 176, 46, .13); font-weight: 600; }
 .chip.tag { color: var(--texto-3); }

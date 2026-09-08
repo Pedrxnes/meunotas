@@ -265,7 +265,7 @@
     }).join('');
   }
 
-  /** barra do topo do cartão: nome do projeto em destaque, na cor do projeto, e o tipo à direita */
+  /** barra do topo do cartão: só a cor do projeto (decorativa) e o tipo à direita */
   function barraDoCartao(it) {
     var tipo = S.tipoPorId(it.tipo);
     var mostraTipo = it.tipo !== 'tarefa';
@@ -283,10 +283,7 @@
     var cor = S.corDoProjeto(it.projeto);
     var estilo = '--cor-projeto:' + cor + ';--cor-projeto-texto:' + U.contrasteDe(cor) +
       ';--cor-projeto-borda:' + U.corComAlfa(U.escurecer(cor, .45), .55);
-    return '<div class="item-barra com-projeto" style="' + estilo + '">' +
-      '<span class="barra-projeto" data-ir-projeto="' + U.escapar(it.projeto) + '" title="Ver só ' +
-      U.escapar(it.projeto) + '">' + U.escapar(it.projeto) + '</span>' +
-      etiquetaTipo + '</div>';
+    return '<div class="item-barra com-projeto" style="' + estilo + '">' + etiquetaTipo + '</div>';
   }
 
   function cartao(it) {
@@ -299,6 +296,12 @@
     if (it.id === vista.selecionado) classes.push('selecionado');
 
     var chips = '';
+    if (it.projeto) {
+      var corProj = S.corDoProjeto(it.projeto);
+      chips += '<span class="chip projeto principal" data-ir-projeto="' + U.escapar(it.projeto) + '" title="Ver só ' +
+        U.escapar(it.projeto) + '" style="background:' + corProj + ';color:' + U.contrasteDe(corProj) + '">' +
+        U.escapar(it.projeto) + '</span>';
+    }
     if (!vista.area && it.area) {
       chips += '<span class="chip area" data-ir-area="' + U.escapar(it.area) + '" title="área">' +
         '<span class="bolinha" style="background:' + U.corDoNome(it.area) + '"></span>' + U.escapar(it.area) + '</span>';
@@ -478,7 +481,7 @@
       selecionar(id);
     });
     lista.addEventListener('dblclick', function (ev) {
-      var barra = ev.target.closest('.barra-projeto');
+      var barra = ev.target.closest('.chip.projeto');
       if (barra) { renomearProjetoNaBarra(barra); return; }
       var cartao = ev.target.closest('.item');
       if (cartao && !ev.target.closest('input,button,[data-ir-projeto],[data-ir-tipo]')) abrirEditor(cartao.getAttribute('data-id'));
