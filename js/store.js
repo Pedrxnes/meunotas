@@ -66,14 +66,16 @@ var S = (function () {
     }).filter(function (p) { return p.nome; }) : [];
   }
 
-  /** projetos guardam também a cor escolhida (cor vazia = automática pelo nome) */
+  /** projetos guardam também a cor escolhida (cor vazia = automática pelo nome) e a cor da faixa, separada */
   function listaDeProjetos(bruto) {
     return Array.isArray(bruto) ? bruto.filter(Boolean).map(function (p) {
-      if (typeof p === 'string') return { nome: p.trim(), cor: '', corEm: '' };
+      if (typeof p === 'string') return { nome: p.trim(), cor: '', corEm: '', corFaixa: '', corFaixaEm: '' };
       return {
         nome: String(p.nome || '').trim(),
         cor: U.corValida(p.cor),
-        corEm: String(p.corEm || '')
+        corEm: String(p.corEm || ''),
+        corFaixa: U.corValida(p.corFaixa),
+        corFaixaEm: String(p.corFaixaEm || '')
       };
     }).filter(function (p) { return p.nome; }) : [];
   }
@@ -167,7 +169,7 @@ var S = (function () {
   function registrarProjeto(nome) {
     nome = String(nome || '').trim();
     if (!nome) return;
-    if (!projetoPorNome(nome)) dados.projetos.push({ nome: nome, cor: '', corEm: '' });
+    if (!projetoPorNome(nome)) dados.projetos.push({ nome: nome, cor: '', corEm: '', corFaixa: '' });
   }
 
   /* ---------- cor do projeto ---------- */
@@ -200,7 +202,7 @@ var S = (function () {
     var p = projetoPorNome(nome);
     if (!p && !limpa) return corDoProjeto(nome);      // nada a fazer: já era automático
     if (!p) {
-      p = { nome: nome, cor: '', corEm: '' };
+      p = { nome: nome, cor: '', corEm: '', corFaixa: '' };
       dados.projetos.push(p);
     }
     if (U.corValida(p.cor) === limpa) return corDoProjeto(nome);
@@ -208,6 +210,37 @@ var S = (function () {
     p.corEm = U.agora();
     salvar(true);
     return corDoProjeto(nome);
+  }
+
+  /* ---------- cor da faixa do topo (separada da cor do projeto) ---------- */
+
+  /** cor da faixa escolhida pelo usuário, ou '' quando segue a cor do projeto */
+  function corFaixaEscolhida(nome) {
+    var p = projetoPorNome(nome);
+    return p ? U.corValida(p.corFaixa) : '';
+  }
+
+  /** a cor que a faixa do topo deve pintar: a escolhida pra faixa, ou a do projeto */
+  function corDaFaixa(nome) {
+    return corFaixaEscolhida(nome) || corDoProjeto(nome);
+  }
+
+  /** cor vazia volta a faixa para acompanhar a cor do projeto */
+  function definirCorFaixa(nome, cor) {
+    nome = nomeCanonico(nome);
+    if (!nome) return '';
+    var limpa = U.corValida(cor);
+    var p = projetoPorNome(nome);
+    if (!p && !limpa) return corDaFaixa(nome);
+    if (!p) {
+      p = { nome: nome, cor: '', corEm: '', corFaixa: '' };
+      dados.projetos.push(p);
+    }
+    if (U.corValida(p.corFaixa) === limpa) return corDaFaixa(nome);
+    p.corFaixa = limpa;
+    p.corFaixaEm = U.agora();
+    salvar(true);
+    return corDaFaixa(nome);
   }
 
   function registrarArea(nome) {
@@ -304,15 +337,18 @@ var S = (function () {
     var anterior = projetoPorNome(antigo);
     var cor = anterior ? U.corValida(anterior.cor) : '';
     var corEm = anterior ? anterior.corEm : '';
+    var corFaixa = anterior ? U.corValida(anterior.corFaixa) : '';
+    var corFaixaEm = anterior ? anterior.corFaixaEm : '';
     vivos().forEach(function (i) {
       if (i.projeto === antigo) { i.projeto = novo; i.atualizadoEm = U.agora(); }
     });
     dados.projetos = dados.projetos.filter(function (p) { return p.nome !== antigo; });
     if (novo) {
       registrarProjeto(novo);
-      // a cor acompanha o nome novo
+      // as cores acompanham o nome novo
       var p = projetoPorNome(novo);
       if (p && cor && !U.corValida(p.cor)) { p.cor = cor; p.corEm = corEm || U.agora(); }
+      if (p && corFaixa && !U.corValida(p.corFaixa)) { p.corFaixa = corFaixa; p.corFaixaEm = corFaixaEm || U.agora(); }
     }
     salvar(true);
   }
@@ -481,16 +517,24 @@ var S = (function () {
       return Object.keys(nomes).map(function (nome) { return { nome: nome }; });
     }
 
-    /** projetos: vence a cor com o carimbo mais novo; no empate, ter cor vence não ter */
+    /** projetos: vence a cor com o carimbo mais novo; no empate, ter cor vence não ter. cor e cor da faixa disputam à parte */
     function uniaoProjetos(x, y) {
       var porNome = Object.create(null);
       x.concat(y).forEach(function (p) {
         var atual = porNome[p.nome];
-        if (!atual) { porNome[p.nome] = { nome: p.nome, cor: p.cor || '', corEm: p.corEm || '' }; return; }
+        if (!atual) {
+          porNome[p.nome] = { nome: p.nome, cor: p.cor || '', corEm: p.corEm || '', corFaixa: p.corFaixa || '', corFaixaEm: p.corFaixaEm || '' };
+          return;
+        }
         var novo = String(p.corEm || ''), velho = String(atual.corEm || '');
         if (novo > velho || (novo === velho && !atual.cor && !!p.cor)) {
           atual.cor = p.cor || '';
           atual.corEm = p.corEm || '';
+        }
+        var novaFaixa = String(p.corFaixaEm || ''), velhaFaixa = String(atual.corFaixaEm || '');
+        if (novaFaixa > velhaFaixa || (novaFaixa === velhaFaixa && !atual.corFaixa && !!p.corFaixa)) {
+          atual.corFaixa = p.corFaixa || '';
+          atual.corFaixaEm = p.corFaixaEm || '';
         }
       });
       return Object.keys(porNome).map(function (k) { return porNome[k]; });
@@ -518,8 +562,10 @@ var S = (function () {
         return [i.id, i.titulo, i.detalhes, i.area, i.projeto, i.tipo, i.tags.join(','), i.prazo,
           i.feito ? 1 : 0, i.fixado ? 1 : 0, i.apagado ? 1 : 0, i.atualizadoEm].join('|');
       });
-    // a cor entra na assinatura: trocar a cor de um projeto também precisa subir para o GitHub
-    var projetos = d.projetos.map(function (p) { return p.nome + '|' + (p.cor || '') + '|' + (p.corEm || ''); }).sort();
+    // a cor entra na assinatura: trocar a cor de um projeto (ou da faixa) também precisa subir para o GitHub
+    var projetos = d.projetos.map(function (p) {
+      return p.nome + '|' + (p.cor || '') + '|' + (p.corEm || '') + '|' + (p.corFaixa || '') + '|' + (p.corFaixaEm || '');
+    }).sort();
     var areas = d.areas.map(function (a) { return a.nome; }).sort();
     return JSON.stringify([itens, projetos, areas]);
   }
@@ -591,6 +637,7 @@ var S = (function () {
     nomesDeArea: nomesDeArea, registrarArea: registrarArea, temSemArea: temSemArea, moverParaArea: moverParaArea,
     TIPOS: TIPOS, tipoPorId: tipoPorId, AREAS_PADRAO: AREAS_PADRAO, PALETA: PALETA,
     corDoProjeto: corDoProjeto, corEscolhida: corEscolhida, definirCorProjeto: definirCorProjeto,
+    corDaFaixa: corDaFaixa, corFaixaEscolhida: corFaixaEscolhida, definirCorFaixa: definirCorFaixa,
     adicionar: adicionar, atualizar: atualizar, alternarFeito: alternarFeito, alternarFixado: alternarFixado,
     apagar: apagar, restaurar: restaurar, renomearProjeto: renomearProjeto, renomearArea: renomearArea,
     limparConcluidas: limparConcluidas,

@@ -169,13 +169,29 @@
       <button class="botao-icone" data-fechar-cor>×</button>
     </div>
     <div class="modal-corpo">
-      <div class="previa-barra" id="cor-previa"><span id="cor-previa-nome">projeto</span></div>
-      <p class="nota">Essa cor pinta a barra no topo de todas as anotações deste projeto e a bolinha na lateral.</p>
-      <div class="paleta" id="paleta-cores"></div>
-      <div class="linha-botoes">
-        <span class="rotulo-cor">Outra cor:</span>
-        <input type="color" id="cor-livre" value="#3b82f6">
-        <button class="botao" id="cor-auto">Voltar ao automático</button>
+      <div class="previa-linha">
+        <span class="previa-tag" id="cor-previa-tag">projeto</span>
+        <div class="previa-faixa" id="cor-previa-faixa"></div>
+      </div>
+
+      <div class="cor-secao">
+        <p class="nota">Cor da <b>tag</b> — aparece nas anotações e na lateral.</p>
+        <div class="paleta" id="paleta-cores"></div>
+        <div class="linha-botoes">
+          <span class="rotulo-cor">Outra cor:</span>
+          <input type="color" id="cor-livre" value="#3b82f6">
+          <button class="botao" id="cor-auto">Voltar ao automático</button>
+        </div>
+      </div>
+
+      <div class="cor-secao">
+        <p class="nota">Cor da <b>faixa</b> no topo da nota — separada da cor da tag.</p>
+        <div class="paleta" id="paleta-cores-faixa"></div>
+        <div class="linha-botoes">
+          <span class="rotulo-cor">Outra cor:</span>
+          <input type="color" id="cor-livre-faixa" value="#3b82f6">
+          <button class="botao" id="cor-auto-faixa">Seguir a cor da tag</button>
+        </div>
       </div>
     </div>
     <div class="modal-pe">

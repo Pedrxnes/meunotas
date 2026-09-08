@@ -280,7 +280,7 @@
       return '<div class="item-barra sem-projeto">' + etiquetaTipo + '</div>';
     }
 
-    var cor = S.corDoProjeto(it.projeto);
+    var cor = S.corDaFaixa(it.projeto);
     var estilo = '--cor-projeto:' + cor + ';--cor-projeto-texto:' + U.contrasteDe(cor) +
       ';--cor-projeto-borda:' + U.corComAlfa(U.escurecer(cor, .45), .55);
     return '<div class="item-barra com-projeto" style="' + estilo + '">' + etiquetaTipo + '</div>';
@@ -797,8 +797,8 @@
     nome = String(nome || '').trim();
     if (!nome) { U.toast('Escolha ou escreva um projeto primeiro'); return; }
     projetoDaPaleta = nome;
-    U.el('#cor-previa-nome').textContent = nome;
-    desenharPaleta();
+    U.el('#cor-previa-tag').textContent = nome;
+    desenharPaletas();
     U.el('#modal-cor').hidden = false;
   }
 
@@ -807,34 +807,52 @@
     projetoDaPaleta = '';
   }
 
-  function desenharPaleta() {
-    if (!projetoDaPaleta) return;
-    var atual = S.corDoProjeto(projetoDaPaleta);
-    var escolhida = S.corEscolhida(projetoDaPaleta);
-
-    U.el('#paleta-cores').innerHTML = S.PALETA.map(function (c) {
+  function paletaHtml(escolhida) {
+    return S.PALETA.map(function (c) {
       return '<button class="amostra-paleta' + (escolhida === c ? ' escolhida' : '') + '" data-cor="' + c + '"' +
         ' title="' + c + '" style="background:' + c + ';color:' + U.contrasteDe(c) + '">' +
         '<span class="tique">✓</span></button>';
     }).join('');
-
-    pintarPrevia(atual);
-    U.el('#cor-livre').value = atual;
-    U.el('#cor-auto').hidden = !escolhida;
   }
 
-  function pintarPrevia(cor) {
-    var previa = U.el('#cor-previa');
-    previa.style.background = cor;
-    previa.style.color = U.contrasteDe(cor);
+  function desenharPaletas() {
+    if (!projetoDaPaleta) return;
+
+    var corTag = S.corDoProjeto(projetoDaPaleta);
+    var escolhidaTag = S.corEscolhida(projetoDaPaleta);
+    U.el('#paleta-cores').innerHTML = paletaHtml(escolhidaTag);
+    U.el('#cor-livre').value = corTag;
+    U.el('#cor-auto').hidden = !escolhidaTag;
+
+    var corFaixa = S.corDaFaixa(projetoDaPaleta);
+    var escolhidaFaixa = S.corFaixaEscolhida(projetoDaPaleta);
+    U.el('#paleta-cores-faixa').innerHTML = paletaHtml(escolhidaFaixa);
+    U.el('#cor-livre-faixa').value = corFaixa;
+    U.el('#cor-auto-faixa').hidden = !escolhidaFaixa;
+
+    pintarPrevia(corTag, corFaixa);
   }
 
-  /** cor vazia devolve o projeto para a cor automática do nome */
+  function pintarPrevia(corTag, corFaixa) {
+    var tag = U.el('#cor-previa-tag');
+    tag.style.background = corTag;
+    tag.style.color = U.contrasteDe(corTag);
+    U.el('#cor-previa-faixa').style.background = corFaixa;
+  }
+
+  /** cor vazia devolve a tag do projeto para a cor automática do nome */
   function aplicarCorProjeto(cor) {
     if (!projetoDaPaleta) return;
     S.definirCorProjeto(projetoDaPaleta, cor);
-    desenharPaleta();
+    desenharPaletas();
     atualizarAmostraEditor();
+  }
+
+  /** cor vazia devolve a faixa para seguir a cor da tag */
+  function aplicarCorFaixa(cor) {
+    if (!projetoDaPaleta) return;
+    S.definirCorFaixa(projetoDaPaleta, cor);
+    desenharPaletas();
   }
 
   /** a bolinha ao lado do campo Projeto, no formulário de anotação */
@@ -855,12 +873,21 @@
       var b = ev.target.closest('[data-cor]');
       if (b) aplicarCorProjeto(b.getAttribute('data-cor'));
     });
+    U.el('#paleta-cores-faixa').addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-cor]');
+      if (b) aplicarCorFaixa(b.getAttribute('data-cor'));
+    });
 
     var livre = U.el('#cor-livre');
-    livre.addEventListener('input', function () { pintarPrevia(livre.value); });
+    livre.addEventListener('input', function () { pintarPrevia(livre.value, S.corDaFaixa(projetoDaPaleta)); });
     livre.addEventListener('change', function () { aplicarCorProjeto(livre.value); });
 
+    var livreFaixa = U.el('#cor-livre-faixa');
+    livreFaixa.addEventListener('input', function () { pintarPrevia(S.corDoProjeto(projetoDaPaleta), livreFaixa.value); });
+    livreFaixa.addEventListener('change', function () { aplicarCorFaixa(livreFaixa.value); });
+
     U.el('#cor-auto').addEventListener('click', function () { aplicarCorProjeto(''); });
+    U.el('#cor-auto-faixa').addEventListener('click', function () { aplicarCorFaixa(''); });
     U.el('#btn-cor-projeto').addEventListener('click', function () { abrirCorProjeto(vista.projeto); });
 
     U.el('#ed-cor-projeto').addEventListener('click', function (ev) {
