@@ -875,6 +875,18 @@
       if (id) apagarComDesfazer(id);
     });
     U.el('#btn-nova-nota').addEventListener('click', function () { abrirNova(); });
+    U.el('#ed-add-check').addEventListener('click', inserirChecklist);
+  }
+
+  /** insere "- [ ] " numa linha nova do campo Detalhes e deixa o cursor pronto pra digitar */
+  function inserirChecklist() {
+    var campo = U.el('#ed-detalhes');
+    var marca = '- [ ] ';
+    var precisaQuebra = campo.value.length > 0 && !/\n$/.test(campo.value);
+    var trecho = (precisaQuebra ? '\n' : '') + marca;
+    campo.value += trecho;
+    campo.focus();
+    campo.selectionStart = campo.selectionEnd = campo.value.length;
   }
 
   /** listas de sugestão dos campos área/projeto */
