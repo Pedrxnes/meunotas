@@ -51,6 +51,8 @@ var S = (function () {
       tipo: IDS_TIPO.indexOf(it.tipo) >= 0 ? it.tipo : 'tarefa',
       tags: Array.isArray(it.tags) ? it.tags.map(String) : [],
       prazo: it.prazo || '',
+      cor: U.corValida(it.cor),
+      corFaixa: U.corValida(it.corFaixa),
       feito: !!it.feito,
       feitoEm: it.feitoEm || '',
       fixado: !!it.fixado,
@@ -241,6 +243,44 @@ var S = (function () {
     p.corFaixaEm = U.agora();
     salvar(true);
     return corDaFaixa(nome);
+  }
+
+  /* ---------- cor por nota (personaliza uma anotação sem mexer nas outras do mesmo projeto) ---------- */
+
+  /** cor da tag dessa nota: a própria, ou a do projeto quando não personalizada */
+  function corTagDoItem(it) {
+    if (!it || !it.projeto) return '';
+    return U.corValida(it.cor) || corDoProjeto(it.projeto);
+  }
+
+  /** cor da faixa dessa nota: a própria, ou a da faixa do projeto quando não personalizada */
+  function corFaixaDoItem(it) {
+    if (!it || !it.projeto) return '';
+    return U.corValida(it.corFaixa) || corDaFaixa(it.projeto);
+  }
+
+  /** cor vazia volta essa nota a acompanhar a cor da tag do projeto */
+  function definirCorItem(id, cor) {
+    var it = porId(id);
+    if (!it) return '';
+    var limpa = U.corValida(cor);
+    if (U.corValida(it.cor) === limpa) return corTagDoItem(it);
+    it.cor = limpa;
+    it.atualizadoEm = U.agora();
+    salvar(true);
+    return corTagDoItem(it);
+  }
+
+  /** cor vazia volta essa nota a acompanhar a cor da faixa do projeto */
+  function definirCorFaixaItem(id, cor) {
+    var it = porId(id);
+    if (!it) return '';
+    var limpa = U.corValida(cor);
+    if (U.corValida(it.corFaixa) === limpa) return corFaixaDoItem(it);
+    it.corFaixa = limpa;
+    it.atualizadoEm = U.agora();
+    salvar(true);
+    return corFaixaDoItem(it);
   }
 
   function registrarArea(nome) {
@@ -560,6 +600,7 @@ var S = (function () {
     var itens = d.itens.slice().sort(function (x, y) { return x.id < y.id ? -1 : 1; })
       .map(function (i) {
         return [i.id, i.titulo, i.detalhes, i.area, i.projeto, i.tipo, i.tags.join(','), i.prazo,
+          i.cor || '', i.corFaixa || '',
           i.feito ? 1 : 0, i.fixado ? 1 : 0, i.apagado ? 1 : 0, i.atualizadoEm].join('|');
       });
     // a cor entra na assinatura: trocar a cor de um projeto (ou da faixa) também precisa subir para o GitHub
@@ -638,6 +679,8 @@ var S = (function () {
     TIPOS: TIPOS, tipoPorId: tipoPorId, AREAS_PADRAO: AREAS_PADRAO, PALETA: PALETA,
     corDoProjeto: corDoProjeto, corEscolhida: corEscolhida, definirCorProjeto: definirCorProjeto,
     corDaFaixa: corDaFaixa, corFaixaEscolhida: corFaixaEscolhida, definirCorFaixa: definirCorFaixa,
+    corTagDoItem: corTagDoItem, corFaixaDoItem: corFaixaDoItem,
+    definirCorItem: definirCorItem, definirCorFaixaItem: definirCorFaixaItem,
     adicionar: adicionar, atualizar: atualizar, alternarFeito: alternarFeito, alternarFixado: alternarFixado,
     apagar: apagar, restaurar: restaurar, renomearProjeto: renomearProjeto, renomearArea: renomearArea,
     limparConcluidas: limparConcluidas,
