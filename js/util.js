@@ -136,6 +136,50 @@ var U = (function () {
     return lum > 0.42 ? '#12141a' : '#ffffff';
   }
 
+  /** hex -> [h, s, l] */
+  function paraHsl(cor) {
+    var c = paraRgb(cor).map(function (v) { return v / 255; });
+    var max = Math.max(c[0], c[1], c[2]), min = Math.min(c[0], c[1], c[2]);
+    var l = (max + min) / 2, h = 0, s = 0;
+    if (max !== min) {
+      var d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === c[0]) h = (c[1] - c[2]) / d + (c[1] < c[2] ? 6 : 0);
+      else if (max === c[1]) h = (c[2] - c[0]) / d + 2;
+      else h = (c[0] - c[1]) / d + 4;
+      h *= 60;
+    }
+    return [h, s * 100, l * 100];
+  }
+
+  /** o tema em uso agora — as cores derivadas mudam com ele */
+  function temaEscuro() {
+    return document.documentElement.getAttribute('data-tema') !== 'claro';
+  }
+
+  /**
+   * a mesma cor, com o brilho ajustado para se ler por cima do fundo do tema.
+   * é o que deixa a cor do projeto discreta em vez de um bloco chapado.
+   */
+  function corLegivel(cor) {
+    var hsl = paraHsl(cor);
+    var s = Math.min(hsl[1], 78);
+    var l = temaEscuro() ? Math.max(hsl[2], 68) : Math.min(hsl[2], 38);
+    return hslParaHex(hsl[0], s, l);
+  }
+
+  /** fundo bem leve na cor do projeto — a marca de cor que sobrou depois de tirar a faixa */
+  function corDeFundo(cor) {
+    return corComAlfa(cor, temaEscuro() ? 0.18 : 0.12);
+  }
+
+  function tamanhoLegivel(bytes) {
+    var n = Number(bytes) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+  }
+
   function debounce(fn, ms) {
     var t;
     return function () {
@@ -175,6 +219,8 @@ var U = (function () {
     escapar: escapar, normalizar: normalizar, dobrar: dobrar, debounce: debounce,
     corDoNome: corDoNome, corValida: corValida, hslParaHex: hslParaHex,
     corComAlfa: corComAlfa, escurecer: escurecer, contrasteDe: contrasteDe,
+    paraHsl: paraHsl, corLegivel: corLegivel, corDeFundo: corDeFundo,
+    temaEscuro: temaEscuro, tamanhoLegivel: tamanhoLegivel,
     paraBase64: paraBase64, deBase64: deBase64, el: el, els: els, toast: toast,
     DIAS_SEMANA: DIAS_SEMANA
   };

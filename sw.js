@@ -1,8 +1,8 @@
 /* MeuNotas — service worker: rede primeiro, cache como rede reserva (funciona offline) */
-var CACHE = 'meunotas-v6';
+var CACHE = 'meunotas-v7';
 var ARQUIVOS = [
   './', 'index.html', 'css/app.css',
-  'js/util.js', 'js/parse.js', 'js/store.js', 'js/github.js', 'js/app.js',
+  'js/util.js', 'js/parse.js', 'js/imagens.js', 'js/store.js', 'js/github.js', 'js/app.js',
   'icone.svg', 'manifest.webmanifest'
 ];
 

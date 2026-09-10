@@ -5,10 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MeuNotas</title>
 <meta name="description" content="Sistema pessoal de notas, tarefas e prazos com sincronia via GitHub.">
-<meta name="theme-color" content="#12141a">
+<meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <link rel="icon" href="icone.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/app.css">
+<script>
+  /* aplica o tema antes de pintar a tela, senão o claro pisca de escuro ao abrir */
+  (function () {
+    var tema = '';
+    try { tema = (JSON.parse(localStorage.getItem('meunotas.prefs') || '{}') || {}).tema || ''; } catch (e) { /* ignora */ }
+    if (!tema) tema = matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'escuro';
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
 </head>
 <body>
 
@@ -107,12 +117,22 @@
         <span>Título</span>
         <input id="ed-titulo" type="text" spellcheck="false">
       </label>
-      <label class="campo">
+      <label class="campo alvo-imagem" id="ed-alvo">
         <span>Detalhes <em>(uma linha por passo; use <code>- [ ]</code> para subtarefa clicável)</em>
           <button type="button" class="botao" id="ed-add-check" style="height:22px;padding:0 8px;margin-left:6px">☑ Checklist</button>
         </span>
         <textarea id="ed-detalhes" rows="7" spellcheck="false"></textarea>
       </label>
+
+      <div class="campo">
+        <span>Imagens</span>
+        <div class="galeria" id="ed-imagens"></div>
+        <div class="solta-aqui">
+          <button type="button" class="botao" id="ed-add-imagem">＋ Imagem</button>
+          <span>ou cole com <code>Ctrl+V</code> / arraste o arquivo aqui</span>
+          <input type="file" id="ed-arquivo-imagem" accept="image/*" multiple hidden>
+        </div>
+      </div>
       <div class="campo-linha">
         <label class="campo estreito">
           <span>Área</span>
@@ -165,33 +185,20 @@
 <div class="fundo-modal acima" id="modal-cor" hidden>
   <div class="modal magro">
     <div class="modal-topo">
-      <strong>Cor do projeto</strong>
+      <strong id="cor-titulo">Cor do projeto</strong>
       <button class="botao-icone" data-fechar-cor>×</button>
     </div>
     <div class="modal-corpo">
-      <div class="previa-linha">
+      <div class="previa" id="cor-previa">
+        <span class="previa-titulo">Assim fica na lista</span>
         <span class="previa-tag" id="cor-previa-tag">projeto</span>
-        <div class="previa-faixa" id="cor-previa-faixa"></div>
       </div>
-
-      <div class="cor-secao">
-        <p class="nota">Cor da <b>tag</b> — aparece nas anotações e na lateral.</p>
-        <div class="paleta" id="paleta-cores"></div>
-        <div class="linha-botoes">
-          <span class="rotulo-cor">Outra cor:</span>
-          <input type="color" id="cor-livre" value="#3b82f6">
-          <button class="botao" id="cor-auto">Voltar ao automático</button>
-        </div>
-      </div>
-
-      <div class="cor-secao">
-        <p class="nota">Cor da <b>faixa</b> no topo da nota — separada da cor da tag.</p>
-        <div class="paleta" id="paleta-cores-faixa"></div>
-        <div class="linha-botoes">
-          <span class="rotulo-cor">Outra cor:</span>
-          <input type="color" id="cor-livre-faixa" value="#3b82f6">
-          <button class="botao" id="cor-auto-faixa">Seguir a cor da tag</button>
-        </div>
+      <p class="nota">A cor aparece no traço da lateral do cartão e na etiqueta do projeto — de leve, sem pintar a anotação inteira.</p>
+      <div class="paleta" id="paleta-cores"></div>
+      <div class="linha-botoes">
+        <span class="rotulo-cor">Outra cor:</span>
+        <input type="color" id="cor-livre" value="#3b82f6">
+        <button class="botao" id="cor-auto">Voltar ao automático</button>
       </div>
     </div>
     <div class="modal-pe">
@@ -290,8 +297,12 @@
       <p class="nota">Pessoal: <code>Levar o carro na revisão %pessoal #carro !sab +lembrete</code></p>
       <p class="nota">Dica: com uma área selecionada na lateral, tudo que você anotar já entra nela — não precisa digitar <code>%</code> toda hora.</p>
 
+      <div class="grupo-titulo">Imagens</div>
+      <p class="nota">Cole (<code>Ctrl+V</code>) uma imagem a qualquer momento: com uma anotação selecionada na lista, ela entra naquela anotação; sem nenhuma selecionada, vira uma anotação nova. Dentro do formulário dá para colar, arrastar o arquivo ou usar <b>＋ Imagem</b>. Clique na miniatura para ver em tela cheia.</p>
+      <p class="nota">As imagens são reduzidas antes de guardar e sobem para o repositório privado como arquivos separados, na pasta <code>imagens/</code> ao lado do <code>notas.json</code> — o arquivo de notas continua leve.</p>
+
       <div class="grupo-titulo">Cor dos projetos</div>
-      <p class="nota">Toda anotação com projeto ganha uma barra colorida no topo do cartão, com o nome do projeto e o tipo. Para escolher a cor, toque na <b>bolinha</b> do projeto na lateral, no botão <b>Cor</b> que aparece ao abrir um projeto, ou no botão <b>Cor</b> ao lado do campo Projeto no formulário. Sem escolha, a cor sai automática a partir do nome.</p>
+      <p class="nota">Cada projeto tem uma cor discreta: um traço fino na lateral do cartão e a etiqueta com o nome. Para escolher, toque na <b>bolinha</b> do projeto na lateral, no botão <b>Cor</b> que aparece ao abrir um projeto, ou no botão <b>Cor</b> ao lado do campo Projeto no formulário. Sem escolha, a cor sai automática a partir do nome.</p>
 
       <div class="grupo-titulo">Atalhos</div>
       <table class="tabela-ajuda">
@@ -306,16 +317,31 @@
         <tr><td><code>Ctrl+Enter</code></td><td>no editor: salvar</td></tr>
         <tr><td><code>1</code> <code>2</code> <code>3</code>…</td><td>troca de área (1 = todas)</td></tr>
         <tr><td><code>s</code></td><td>sincronizar agora</td></tr>
+        <tr><td><code>Ctrl+V</code></td><td>cola imagem na anotação selecionada</td></tr>
         <tr><td><code>Esc</code></td><td>fecha modal / limpa busca</td></tr>
       </table>
     </div>
   </div>
 </div>
 
+<!-- ============ visor de imagem ============ -->
+<div class="visor" id="visor" hidden>
+  <div class="visor-topo">
+    <span id="visor-legenda"></span>
+    <span class="espaco"></span>
+    <button class="botao" id="visor-anterior" title="Anterior (←)">‹</button>
+    <button class="botao" id="visor-proxima" title="Próxima (→)">›</button>
+    <button class="botao" id="visor-baixar">Baixar</button>
+    <button class="botao" id="visor-fechar" title="Fechar (Esc)">Fechar</button>
+  </div>
+  <div class="visor-palco"><img id="visor-img" alt=""></div>
+</div>
+
 <div class="aviso-flutuante" id="toast" hidden></div>
 
 <script src="js/util.js"></script>
 <script src="js/store.js"></script>
+<script src="js/imagens.js"></script>
 <script src="js/parse.js"></script>
 <script src="js/github.js"></script>
 <script src="js/app.js"></script>

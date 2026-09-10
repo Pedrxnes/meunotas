@@ -116,6 +116,40 @@ var G = (function () {
     return novo;
   }
 
+  /** o mesmo arquivo, sem decodificar: devolve {base64, sha} ou null quando não existe */
+  async function lerBinario(caminho) {
+    var rota = '/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) +
+      '/contents/' + caminho.split('/').map(encodeURIComponent).join('/') +
+      '?ref=' + encodeURIComponent(cfg.branch) + '&t=' + Date.now();
+    try {
+      var r = await api(rota);
+      if (Array.isArray(r) || !r || r.encoding !== 'base64') return null;
+      guardarSha(caminho, r.sha);
+      return { base64: String(r.content || '').replace(/\s/g, ''), sha: r.sha };
+    } catch (e) {
+      if (e.status === 404) return null;
+      throw e;
+    }
+  }
+
+  /** grava bytes já em base64 (imagem colada), sem passar por texto */
+  async function gravarBinario(caminho, base64, sha, mensagem) {
+    var rota = '/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) +
+      '/contents/' + caminho.split('/').map(encodeURIComponent).join('/');
+    var corpo = { message: mensagem || 'MeuNotas: imagem', content: base64, branch: cfg.branch };
+    if (sha) corpo.sha = sha;
+    try {
+      var r = await api(rota, { method: 'PUT', body: corpo });
+      var novo = r && r.content && r.content.sha;
+      if (novo) guardarSha(caminho, novo);
+      return novo;
+    } catch (e) {
+      // já existe (imagem re-enviada depois de trocar de máquina): o conteúdo é o mesmo, segue o baile
+      if (e.status === 422 || e.status === 409) return shas[caminho] || '';
+      throw e;
+    }
+  }
+
   async function testar() {
     var r = await api('/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo));
     var b = await api('/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) +
@@ -131,6 +165,11 @@ var G = (function () {
   /* ---------- ciclo de sincronia ---------- */
 
   async function passo() {
+    // as imagens vão primeiro: a outra máquina nunca deve ver nota apontando para imagem que não subiu
+    if (typeof IM !== 'undefined') {
+      try { await IM.sincronizar(S.idsDeImagem()); } catch (e) { console.warn('imagens não subiram', e); }
+    }
+
     var remoto = await lerArquivo(cfg.caminho);
     var pacoteRemoto = null;
     if (remoto) {
@@ -175,6 +214,7 @@ var G = (function () {
       try { await espelharMarkdown(); } catch (e) { console.warn('espelho NOTAS.md falhou', e); }
     }
 
+    if (typeof IM !== 'undefined') IM.tentarDeNovo();
     ultimaSincronia = U.agora();
     try { localStorage.setItem('meunotas.ultimaSincronia', ultimaSincronia); } catch (e) { /* ignora */ }
   }
@@ -243,6 +283,7 @@ var G = (function () {
     get cfg() { return cfg; },
     get ultimaSincronia() { return ultimaSincronia || localStorage.getItem('meunotas.ultimaSincronia') || ''; },
     aoEstado: aoEstado, estado: estado, testar: testar, sincronizar: sincronizar,
-    lerArquivo: lerArquivo, gravarArquivo: gravarArquivo, zerarShas: zerarShas
+    lerArquivo: lerArquivo, gravarArquivo: gravarArquivo,
+    lerBinario: lerBinario, gravarBinario: gravarBinario, zerarShas: zerarShas
   };
 })();
