@@ -4,6 +4,9 @@
 
   var vista = { area: '', visao: 'hoje', projeto: '', tipos: [], busca: '', selecionado: '', editando: '', criando: false };
   var ultimoApagado = null;
+  var imagensPendentes = [];   // imagens coladas numa anotação que ainda não foi criada
+  var visor = { fichas: [], pos: 0 };
+  var pronto = false;
   var GRUPOS = ['Atrasadas', 'Hoje', 'Amanhã', 'Próximos 7 dias', 'Mais adiante', 'Sem prazo', 'Concluídas'];
 
   /* ---------------- arranque ---------------- */
@@ -30,6 +33,7 @@
     });
     G.aoEstado(mostrarEstadoSync);
 
+    pronto = true;
     desenhar();
     if (G.configurado()) {
       G.sincronizar();
@@ -66,6 +70,8 @@
     document.documentElement.setAttribute('data-tema', tema === 'claro' ? 'claro' : 'escuro');
     S.prefs.tema = tema === 'claro' ? 'claro' : 'escuro';
     S.salvarPrefs();
+    // a cor do projeto é calculada para o tema em uso, então precisa repintar
+    if (pronto) desenhar();
   }
 
   /* ---------------- desenho ---------------- */
@@ -211,6 +217,7 @@
       html = itens.map(cartao).join('');
     }
     alvo.innerHTML = html;
+    resolverImagens(alvo);
   }
 
   /** escapa o texto e envolve os trechos que casam com a busca */
@@ -265,25 +272,43 @@
     }).join('');
   }
 
-  /** barra do topo do cartão: só a cor do projeto (decorativa) e o tipo à direita */
-  function barraDoCartao(it) {
-    var tipo = S.tipoPorId(it.tipo);
-    var mostraTipo = it.tipo !== 'tarefa';
-    if (!it.projeto && !mostraTipo) return '';
+  /** miniatura de imagem: o endereço chega depois, por IndexedDB ou pelo repositório */
+  function miniatura(g, extra) {
+    var pronta = IM.urlEmCache(g.id);
+    var titulo = U.escapar(g.nome || 'imagem colada');
+    return '<span class="miniatura' + (pronta ? '' : ' carregando') + '" role="button" tabindex="0"' +
+      ' data-ver-imagem="' + U.escapar(g.id) + '" title="' + titulo + '">' +
+      '<img data-img="' + U.escapar(g.id) + '" alt="' + titulo + '"' + (pronta ? ' src="' + pronta + '"' : '') + '>' +
+      (extra || '') + '</span>';
+  }
 
-    var etiquetaTipo = mostraTipo
-      ? '<span class="barra-tipo" data-ir-tipo="' + it.tipo + '" title="' + U.escapar(tipo.dica) + '">' +
-        tipo.icone + ' ' + U.escapar(tipo.rotulo) + '</span>'
-      : '';
+  /** procura a ficha de uma imagem, esteja ela numa anotação salva ou ainda pendente */
+  function fichaDeImagem(id) {
+    var achou = null;
+    imagensPendentes.forEach(function (g) { if (g.id === id) achou = g; });
+    if (achou) return achou;
+    S.vivos().some(function (i) {
+      return i.imagens.some(function (g) {
+        if (g.id === id) { achou = g; return true; }
+        return false;
+      });
+    });
+    return achou;
+  }
 
-    if (!it.projeto) {
-      return '<div class="item-barra sem-projeto">' + etiquetaTipo + '</div>';
-    }
-
-    var cor = S.corFaixaDoItem(it);
-    var estilo = '--cor-projeto:' + cor + ';--cor-projeto-texto:' + U.contrasteDe(cor) +
-      ';--cor-projeto-borda:' + U.corComAlfa(U.escurecer(cor, .45), .55);
-    return '<div class="item-barra com-projeto" style="' + estilo + '">' + etiquetaTipo + '</div>';
+  /** completa as miniaturas recém-desenhadas com o endereço de cada imagem */
+  function resolverImagens(raiz) {
+    var alvo = raiz || document;
+    Array.prototype.slice.call(alvo.querySelectorAll('img[data-img]:not([src])')).forEach(function (img) {
+      var ficha = fichaDeImagem(img.getAttribute('data-img'));
+      if (!ficha) return;
+      IM.garantir(ficha).then(function (url) {
+        var caixa = img.parentNode;
+        if (!caixa) return;
+        caixa.classList.remove('carregando');
+        if (url) img.src = url; else caixa.classList.add('faltando');
+      });
+    });
   }
 
   function cartao(it) {
@@ -292,15 +317,24 @@
     if (it.feito) classes.push('feito');
     else if (dias !== null && dias < 0) classes.push('atrasado');
     else if (dias === 0) classes.push('hoje');
-    else if (it.fixado) classes.push('fixado');
+    if (it.fixado) classes.push('fixado');
     if (it.id === vista.selecionado) classes.push('selecionado');
+
+    // a cor do projeto entra só no traço da lateral e na etiqueta — nunca no cartão inteiro
+    var cor = S.corTagDoItem(it);
+    var estilo = '';
+    if (cor) { classes.push('com-cor'); estilo = ' style="--cor-nota:' + cor + '"'; }
 
     var chips = '';
     if (it.projeto) {
-      var corProj = S.corTagDoItem(it);
-      chips += '<span class="chip projeto principal" data-ir-projeto="' + U.escapar(it.projeto) + '" title="Ver só ' +
-        U.escapar(it.projeto) + '" style="background:' + corProj + ';color:' + U.contrasteDe(corProj) + '">' +
+      chips += '<span class="chip projeto" data-ir-projeto="' + U.escapar(it.projeto) + '" title="Ver só ' +
+        U.escapar(it.projeto) + '" style="background:' + U.corDeFundo(cor) + ';color:' + U.corLegivel(cor) + '">' +
         U.escapar(it.projeto) + '</span>';
+    }
+    if (it.tipo !== 'tarefa') {
+      var tipo = S.tipoPorId(it.tipo);
+      chips += '<span class="chip tipo" data-ir-tipo="' + it.tipo + '" title="' + U.escapar(tipo.dica) + '">' +
+        tipo.icone + ' ' + U.escapar(tipo.rotulo) + '</span>';
     }
     if (!vista.area && it.area) {
       chips += '<span class="chip area" data-ir-area="' + U.escapar(it.area) + '" title="área">' +
@@ -313,14 +347,18 @@
     it.tags.forEach(function (t) { chips += '<span class="chip tag">' + U.escapar(t) + '</span>'; });
     if (it.feito && it.feitoEm) chips += '<span class="chip">✓ ' + U.dataHoraLegivel(it.feitoEm) + '</span>';
 
-    return '<div class="' + classes.join(' ') + '" data-id="' + it.id + '">' +
-      barraDoCartao(it) +
+    var imagens = it.imagens.length
+      ? '<div class="item-imagens">' + it.imagens.map(function (g) { return miniatura(g); }).join('') + '</div>'
+      : '';
+
+    return '<div class="' + classes.join(' ') + '" data-id="' + it.id + '"' + estilo + '>' +
       '<div class="item-corpo">' +
       '<input class="caixa" type="checkbox"' + (it.feito ? ' checked' : '') + ' title="Concluir (x)">' +
       '<div class="item-meio">' +
       '<div class="item-titulo">' + (it.fixado ? '★ ' : '') + realcar(it.titulo, vista.busca) + '</div>' +
       (chips ? '<div class="item-chips">' + chips + '</div>' : '') +
       (it.detalhes ? '<div class="item-detalhes">' + detalhesEmHtml(it) + '</div>' : '') +
+      imagens +
       '</div>' +
       '<div class="item-acoes">' +
       '<button class="acao' + (it.fixado ? ' on' : '') + '" data-acao="fixar" title="Fixar (f)">★</button>' +
@@ -461,6 +499,13 @@
       var sub = ev.target.closest('input[data-sub]');
       if (sub) { alternarSubtarefa(id, Number(sub.getAttribute('data-sub'))); return; }
 
+      var mini = ev.target.closest('[data-ver-imagem]');
+      if (mini) {
+        var dono = S.porId(id);
+        if (dono) abrirVisor(dono.imagens, mini.getAttribute('data-ver-imagem'));
+        return;
+      }
+
       var chip = ev.target.closest('[data-ir-projeto]');
       if (chip) { irPara('projeto', chip.getAttribute('data-ir-projeto')); return; }
 
@@ -510,6 +555,7 @@
     });
 
     ligarEditor();
+    ligarImagens();
     ligarConfig();
     ligarCorProjeto();
     document.addEventListener('keydown', atalhos);
@@ -699,6 +745,236 @@
     campo.addEventListener('blur', function () { encerrar(true); });
   }
 
+  /* ---------------- imagens coladas ---------------- */
+
+  /** processa em fila (redimensionar é pesado) e devolve as fichas que deram certo */
+  function prepararArquivos(arquivos) {
+    var fichas = [], erros = [];
+    return arquivos.reduce(function (fila, arquivo) {
+      return fila.then(function () {
+        return IM.adicionar(arquivo).then(function (ficha) {
+          fichas.push(ficha);
+        }).catch(function (e) {
+          erros.push(e && e.message ? e.message : String(e));
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      if (erros.length) U.toast(erros[0], 5000);
+      return fichas;
+    });
+  }
+
+  function plural(n) { return n === 1 ? '1 imagem' : n + ' imagens'; }
+
+  /** anexa numa anotação que já existe */
+  function anexarEm(id, arquivos) {
+    if (!arquivos.length) return;
+    U.toast(arquivos.length === 1 ? 'Guardando imagem…' : 'Guardando ' + plural(arquivos.length) + '…', 8000);
+    prepararArquivos(arquivos).then(function (fichas) {
+      if (!fichas.length) return;
+      S.adicionarImagens(id, fichas);
+      if (!U.el('#modal-item').hidden) desenharGaleriaEditor();
+      U.toast(plural(fichas.length) + ' na anotação');
+    });
+  }
+
+  /** guarda para a anotação que ainda vai ser criada no formulário */
+  function anexarPendente(arquivos) {
+    if (!arquivos.length) return;
+    U.toast('Guardando imagem…', 8000);
+    prepararArquivos(arquivos).then(function (fichas) {
+      if (!fichas.length) return;
+      imagensPendentes = imagensPendentes.concat(fichas);
+      desenharGaleriaEditor();
+      U.toast(plural(fichas.length) + ' pronta(s) — salve para criar a anotação');
+    });
+  }
+
+  /** colar sem nada selecionado cria uma anotação nova só com a imagem */
+  function criarComImagens(arquivos) {
+    U.toast('Guardando imagem…', 8000);
+    prepararArquivos(arquivos).then(function (fichas) {
+      if (!fichas.length) return;
+      var nome = String(fichas[0].nome || '').replace(/\.[a-z0-9]+$/i, '').trim();
+      var campos = {
+        titulo: nome || 'Imagem colada',
+        tipo: vista.tipos.length === 1 ? vista.tipos[0] : 'nota',
+        imagens: fichas
+      };
+      if (vista.area && vista.area !== 'sem-area') campos.area = vista.area;
+      if (vista.visao === 'projeto') campos.projeto = vista.projeto;
+      var it = S.adicionar(campos);
+      if (!it) return;
+      selecionar(it.id);
+      U.toast('Anotação criada com ' + plural(fichas.length));
+    });
+  }
+
+  /** um só caminho para tudo que cola imagem: editor → selecionada → anotação nova */
+  function receberImagens(arquivos, origem) {
+    if (!arquivos.length) return;
+    if (origem === 'editor' || !U.el('#modal-item').hidden) {
+      if (vista.criando) anexarPendente(arquivos);
+      else if (vista.editando) anexarEm(vista.editando, arquivos);
+      return;
+    }
+    if (vista.selecionado && S.porId(vista.selecionado)) anexarEm(vista.selecionado, arquivos);
+    else criarComImagens(arquivos);
+  }
+
+  function imagensDoEditor() {
+    if (vista.criando) return imagensPendentes;
+    var it = vista.editando ? S.porId(vista.editando) : null;
+    return it ? it.imagens : [];
+  }
+
+  function desenharGaleriaEditor() {
+    var lista = imagensDoEditor();
+    var alvo = U.el('#ed-imagens');
+    alvo.innerHTML = lista.map(function (g) {
+      return miniatura(g, '<button type="button" class="tirar-imagem" data-tirar="' + U.escapar(g.id) + '" title="Tirar esta imagem">×</button>');
+    }).join('');
+    resolverImagens(alvo);
+  }
+
+  function tirarImagem(idImagem) {
+    if (vista.criando) {
+      imagensPendentes = imagensPendentes.filter(function (g) { return g.id !== idImagem; });
+      IM.apagarLocal(idImagem);
+      desenharGaleriaEditor();
+      return;
+    }
+    if (!vista.editando) return;
+    S.removerImagem(vista.editando, idImagem);
+    desenharGaleriaEditor();
+    U.toast('Imagem tirada da anotação');
+  }
+
+  /** imagens coladas num formulário abandonado não precisam ficar ocupando espaço */
+  function descartarPendentes() {
+    imagensPendentes.forEach(function (g) { IM.apagarLocal(g.id); });
+    imagensPendentes = [];
+  }
+
+  function ligarImagens() {
+    document.addEventListener('paste', function (ev) {
+      if (!U.el('#visor').hidden) return;
+      var arquivos = IM.arquivosDe(ev.clipboardData);
+      if (!arquivos.length) return;
+      ev.preventDefault();
+      receberImagens(arquivos);
+    });
+
+    // sem isso, soltar uma imagem fora do editor faz o navegador abrir o arquivo e sair do app
+    document.addEventListener('dragover', function (ev) {
+      if (ev.dataTransfer && Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') >= 0) ev.preventDefault();
+    });
+    document.addEventListener('drop', function (ev) {
+      var arquivos = IM.arquivosDe(ev.dataTransfer);
+      ev.preventDefault();
+      if (arquivos.length) receberImagens(arquivos);
+    });
+
+    U.el('#ed-add-imagem').addEventListener('click', function () { U.el('#ed-arquivo-imagem').click(); });
+    U.el('#ed-arquivo-imagem').addEventListener('change', function (ev) {
+      var arquivos = Array.prototype.slice.call(ev.target.files || []).filter(function (f) { return /^image\//.test(f.type); });
+      receberImagens(arquivos, 'editor');
+      ev.target.value = '';
+    });
+
+    U.el('#ed-imagens').addEventListener('click', function (ev) {
+      var tirar = ev.target.closest('[data-tirar]');
+      if (tirar) { ev.preventDefault(); ev.stopPropagation(); tirarImagem(tirar.getAttribute('data-tirar')); return; }
+      var ver = ev.target.closest('[data-ver-imagem]');
+      if (ver) abrirVisor(imagensDoEditor(), ver.getAttribute('data-ver-imagem'));
+    });
+
+    // arrastar o arquivo em cima do campo Detalhes
+    var alvo = U.el('#ed-alvo');
+    ['dragenter', 'dragover'].forEach(function (nome) {
+      alvo.addEventListener(nome, function (ev) {
+        if (!ev.dataTransfer || Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') < 0) return;
+        ev.preventDefault();
+        alvo.classList.add('arrastando');
+      });
+    });
+    ['dragleave', 'dragend'].forEach(function (nome) {
+      alvo.addEventListener(nome, function () { alvo.classList.remove('arrastando'); });
+    });
+    alvo.addEventListener('drop', function (ev) {
+      var arquivos = IM.arquivosDe(ev.dataTransfer);
+      alvo.classList.remove('arrastando');
+      if (!arquivos.length) return;
+      ev.preventDefault();
+      ev.stopPropagation();          // senão o ouvinte do documento anexaria de novo
+      receberImagens(arquivos, 'editor');
+    });
+
+    U.el('#visor-fechar').addEventListener('click', fecharVisor);
+    U.el('#visor-anterior').addEventListener('click', function () { andarNoVisor(-1); });
+    U.el('#visor-proxima').addEventListener('click', function () { andarNoVisor(1); });
+    U.el('#visor-baixar').addEventListener('click', baixarDoVisor);
+    U.el('#visor').addEventListener('click', function (ev) {
+      if (ev.target === U.el('#visor') || ev.target.classList.contains('visor-palco')) fecharVisor();
+    });
+  }
+
+  /* ---------------- visor em tela cheia ---------------- */
+
+  function abrirVisor(fichas, idImagem) {
+    var lista = (fichas || []).slice();
+    if (!lista.length) return;
+    var pos = 0;
+    lista.forEach(function (g, i) { if (g.id === idImagem) pos = i; });
+    visor = { fichas: lista, pos: pos };
+    U.el('#visor').hidden = false;
+    mostrarNoVisor();
+  }
+
+  function fecharVisor() {
+    U.el('#visor').hidden = true;
+    U.el('#visor-img').removeAttribute('src');
+    visor = { fichas: [], pos: 0 };
+  }
+
+  function andarNoVisor(passo) {
+    if (visor.fichas.length < 2) return;
+    visor.pos = (visor.pos + passo + visor.fichas.length) % visor.fichas.length;
+    mostrarNoVisor();
+  }
+
+  function mostrarNoVisor() {
+    var g = visor.fichas[visor.pos];
+    if (!g) return;
+    var partes = [];
+    if (visor.fichas.length > 1) partes.push((visor.pos + 1) + ' de ' + visor.fichas.length);
+    if (g.nome) partes.push(g.nome);
+    if (g.largura && g.altura) partes.push(g.largura + '×' + g.altura);
+    if (g.bytes) partes.push(U.tamanhoLegivel(g.bytes));
+    U.el('#visor-legenda').textContent = partes.join(' · ');
+    U.el('#visor-anterior').hidden = visor.fichas.length < 2;
+    U.el('#visor-proxima').hidden = visor.fichas.length < 2;
+
+    var img = U.el('#visor-img');
+    img.removeAttribute('src');
+    IM.garantir(g).then(function (url) {
+      if (url && visor.fichas[visor.pos] === g) img.src = url;
+      else if (!url) U.toast('Essa imagem ainda não chegou nesta máquina — sincronize com a rede ligada', 5000);
+    });
+  }
+
+  function baixarDoVisor() {
+    var g = visor.fichas[visor.pos];
+    if (!g) return;
+    IM.garantir(g).then(function (url) {
+      if (!url) return;
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = g.nome || (g.id + '.' + IM.extensaoDe(g.tipo));
+      a.click();
+    });
+  }
+
   /* ---------------- atalhos ---------------- */
 
   function digitando(alvo) {
@@ -709,6 +985,14 @@
     var modalAberto = U.els('.fundo-modal').some(function (f) { return !f.hidden; });
 
     var paletaAberta = !U.el('#modal-cor').hidden;
+
+    // o visor de imagem fica por cima de tudo e come as setas
+    if (!U.el('#visor').hidden) {
+      if (ev.key === 'Escape') { ev.preventDefault(); fecharVisor(); }
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); andarNoVisor(-1); }
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); andarNoVisor(1); }
+      return;
+    }
 
     if (ev.key === 'Escape') {
       if (paletaAberta) { fecharCorProjeto(); return; }   // fecha só a paleta, mantém o editor atrás
@@ -783,10 +1067,11 @@
     U.el(sel).hidden = false;
   }
   function fecharModais() {
+    if (vista.criando) descartarPendentes();
     U.els('.fundo-modal').forEach(function (f) { f.hidden = true; });
     vista.editando = '';
     vista.criando = false;
-    projetoDaPaleta = '';
+    alvoPaleta = null;
   }
 
   /* ---------------- cor do projeto / da nota ----------------
@@ -800,6 +1085,7 @@
     nome = String(nome || '').trim();
     if (!nome) { U.toast('Escolha ou escreva um projeto primeiro'); return; }
     alvoPaleta = { modo: 'projeto', chave: nome };
+    U.el('#cor-titulo').textContent = 'Cor do projeto';
     U.el('#cor-previa-tag').textContent = nome;
     desenharPaletas();
     U.el('#modal-cor').hidden = false;
@@ -810,6 +1096,7 @@
     var it = S.porId(id);
     if (!it || !it.projeto) { U.toast('Salve a nota com um projeto antes de personalizar a cor'); return; }
     alvoPaleta = { modo: 'item', chave: id };
+    U.el('#cor-titulo').textContent = 'Cor só desta anotação';
     U.el('#cor-previa-tag').textContent = it.projeto;
     desenharPaletas();
     U.el('#modal-cor').hidden = false;
@@ -831,65 +1118,41 @@
   /** resolve o alvo atual da paleta para as funções certas de leitura/escrita */
   function itemDaPaleta() { return alvoPaleta && alvoPaleta.modo === 'item' ? S.porId(alvoPaleta.chave) : null; }
 
-  function corTagAtual() {
+  function corAtual() {
     if (!alvoPaleta) return '';
     return alvoPaleta.modo === 'item' ? S.corTagDoItem(itemDaPaleta()) : S.corDoProjeto(alvoPaleta.chave);
   }
-  function corTagEscolhidaAtual() {
+  function corEscolhidaAtual() {
     if (!alvoPaleta) return '';
     if (alvoPaleta.modo === 'item') { var it = itemDaPaleta(); return it ? U.corValida(it.cor) : ''; }
     return S.corEscolhida(alvoPaleta.chave);
   }
-  function corFaixaAtual() {
-    if (!alvoPaleta) return '';
-    return alvoPaleta.modo === 'item' ? S.corFaixaDoItem(itemDaPaleta()) : S.corDaFaixa(alvoPaleta.chave);
-  }
-  function corFaixaEscolhidaAtual() {
-    if (!alvoPaleta) return '';
-    if (alvoPaleta.modo === 'item') { var it = itemDaPaleta(); return it ? U.corValida(it.corFaixa) : ''; }
-    return S.corFaixaEscolhida(alvoPaleta.chave);
-  }
 
   function desenharPaletas() {
     if (!alvoPaleta) return;
-
-    var corTag = corTagAtual();
-    var escolhidaTag = corTagEscolhidaAtual();
-    U.el('#paleta-cores').innerHTML = paletaHtml(escolhidaTag);
-    U.el('#cor-livre').value = corTag;
-    U.el('#cor-auto').hidden = !escolhidaTag;
-
-    var corFaixa = corFaixaAtual();
-    var escolhidaFaixa = corFaixaEscolhidaAtual();
-    U.el('#paleta-cores-faixa').innerHTML = paletaHtml(escolhidaFaixa);
-    U.el('#cor-livre-faixa').value = corFaixa;
-    U.el('#cor-auto-faixa').hidden = !escolhidaFaixa;
-
-    pintarPrevia(corTag, corFaixa);
+    var cor = corAtual();
+    var escolhida = corEscolhidaAtual();
+    U.el('#paleta-cores').innerHTML = paletaHtml(escolhida);
+    U.el('#cor-livre').value = cor;
+    U.el('#cor-auto').hidden = !escolhida;
+    pintarPrevia(cor);
   }
 
-  function pintarPrevia(corTag, corFaixa) {
+  /** a prévia mostra exatamente o que o cartão vai ganhar: traço fino e etiqueta lavada */
+  function pintarPrevia(cor) {
+    U.el('#cor-previa').style.setProperty('--cor-previa', cor);
     var tag = U.el('#cor-previa-tag');
-    tag.style.background = corTag;
-    tag.style.color = U.contrasteDe(corTag);
-    U.el('#cor-previa-faixa').style.background = corFaixa;
+    tag.style.background = U.corDeFundo(cor);
+    tag.style.color = U.corLegivel(cor);
   }
 
-  /** cor vazia devolve a tag (do projeto ou da nota) para a automática/do projeto */
-  function aplicarCorProjeto(cor) {
+  /** cor vazia devolve o projeto (ou a nota) para a cor automática do nome */
+  function aplicarCor(cor) {
     if (!alvoPaleta) return;
     if (alvoPaleta.modo === 'item') S.definirCorItem(alvoPaleta.chave, cor);
     else S.definirCorProjeto(alvoPaleta.chave, cor);
     desenharPaletas();
     atualizarAmostraEditor();
-  }
-
-  /** cor vazia devolve a faixa a seguir a cor da tag (do projeto ou da nota) */
-  function aplicarCorFaixa(cor) {
-    if (!alvoPaleta) return;
-    if (alvoPaleta.modo === 'item') S.definirCorFaixaItem(alvoPaleta.chave, cor);
-    else S.definirCorFaixa(alvoPaleta.chave, cor);
-    desenharPaletas();
   }
 
   /** a bolinha ao lado do campo Projeto, no formulário de anotação */
@@ -910,23 +1173,14 @@
 
     U.el('#paleta-cores').addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-cor]');
-      if (b) aplicarCorProjeto(b.getAttribute('data-cor'));
-    });
-    U.el('#paleta-cores-faixa').addEventListener('click', function (ev) {
-      var b = ev.target.closest('[data-cor]');
-      if (b) aplicarCorFaixa(b.getAttribute('data-cor'));
+      if (b) aplicarCor(b.getAttribute('data-cor'));
     });
 
     var livre = U.el('#cor-livre');
-    livre.addEventListener('input', function () { pintarPrevia(livre.value, corFaixaAtual()); });
-    livre.addEventListener('change', function () { aplicarCorProjeto(livre.value); });
+    livre.addEventListener('input', function () { pintarPrevia(livre.value); });
+    livre.addEventListener('change', function () { aplicarCor(livre.value); });
 
-    var livreFaixa = U.el('#cor-livre-faixa');
-    livreFaixa.addEventListener('input', function () { pintarPrevia(corTagAtual(), livreFaixa.value); });
-    livreFaixa.addEventListener('change', function () { aplicarCorFaixa(livreFaixa.value); });
-
-    U.el('#cor-auto').addEventListener('click', function () { aplicarCorProjeto(''); });
-    U.el('#cor-auto-faixa').addEventListener('click', function () { aplicarCorFaixa(''); });
+    U.el('#cor-auto').addEventListener('click', function () { aplicarCor(''); });
     U.el('#btn-cor-projeto').addEventListener('click', function () { abrirCorProjeto(vista.projeto); });
 
     U.el('#ed-cor-projeto').addEventListener('click', function (ev) {
@@ -977,6 +1231,7 @@
 
   /** formulário em branco, já herdando o contexto aberto (mesma regra da barra rápida) */
   function abrirNova() {
+    descartarPendentes();
     vista.editando = '';
     vista.criando = true;
     U.el('#modal-item-titulo').textContent = 'Nova anotação';
@@ -988,6 +1243,7 @@
     U.el('#ed-tags').value = '';
     U.el('#ed-fixado').checked = false;
     U.el('#ed-tipo').innerHTML = opcoesDeTipo(vista.tipos.length === 1 ? vista.tipos[0] : 'tarefa');
+    desenharGaleriaEditor();
     preencherDatalists();
     atualizarAmostraEditor();
     U.el('#ed-meta').textContent = 'Dá para escrever atalhos no título também (%area #projeto !amanha @tag) — eles viram campos ao salvar.';
@@ -1011,6 +1267,7 @@
     U.el('#ed-tags').value = it.tags.join(' ');
     U.el('#ed-fixado').checked = it.fixado;
     U.el('#ed-tipo').innerHTML = opcoesDeTipo(it.tipo);
+    desenharGaleriaEditor();
     preencherDatalists();
     atualizarAmostraEditor();
     U.el('#ed-meta').textContent = 'Criada em ' + U.dataHoraLegivel(it.criadoEm) +
@@ -1046,12 +1303,14 @@
   /** o título ainda passa pelo interpretador; atalho digitado vence o campo, que já vem do contexto */
   function criarPeloFormulario() {
     var f = lerFormularioItem();
-    if (!f.titulo && !f.detalhes.trim()) {
+    if (!f.titulo && !f.detalhes.trim() && !imagensPendentes.length) {
       U.el('#ed-titulo').focus();
       U.toast('Escreva ao menos um título');
       return;
     }
+    if (!f.titulo && !f.detalhes.trim()) f.titulo = 'Imagem colada';
     var campos = P.interpretar(f.titulo);
+    campos.imagens = imagensPendentes;
     campos.detalhes = [campos.detalhes, f.detalhes].filter(function (t) { return String(t || '').trim(); }).join('\n');
     campos.area = campos.area || f.area;
     campos.projeto = campos.projeto || f.projeto;
@@ -1062,6 +1321,7 @@
 
     var it = S.adicionar(campos);
     if (!it) { U.toast('Nada para criar'); return; }
+    imagensPendentes = [];
     fecharModais();
     U.toast('Criada' + (it.area ? ' em ' + it.area : '') + (it.projeto ? ' / ' + it.projeto : '') +
       (it.prazo ? ' · ' + U.prazoLegivel(it.prazo) : ''));
@@ -1080,8 +1340,13 @@
     U.el('#cf-espelho').checked = c.espelho !== false;
     U.el('#cf-status').textContent = '';
     U.el('#cf-status').className = 'status-inline';
+    var fichas = S.fichasDeImagem();
     U.el('#cf-info').innerHTML = 'Itens guardados: ' + S.vivos().length +
+      ' · imagens: ' + fichas.length +
       ' · última sincronia: ' + (G.ultimaSincronia ? U.dataHoraLegivel(G.ultimaSincronia) : 'nunca');
+    IM.espacoUsado().then(function (bytes) {
+      if (bytes) U.el('#cf-info').innerHTML += ' · ' + U.tamanhoLegivel(bytes) + ' de imagem nesta máquina';
+    });
     desenharBlocoSemArea();
     abrirModal('#modal-config');
   }
@@ -1206,6 +1471,7 @@
       armado = false;
       zerar.textContent = 'Apagar dados locais';
       localStorage.removeItem('meunotas.dados');
+      S.fichasDeImagem().forEach(function (g) { IM.apagarLocal(g.id); });
       G.zerarShas();
       S.substituir({ v: 1, itens: [], projetos: [] });
       statusConfig('dados locais apagados (o que está no GitHub continua lá)', 'ok');

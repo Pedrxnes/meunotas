@@ -16,6 +16,7 @@ Abre em qualquer máquina (casa, trabalho, celular) e mostra as mesmas notas.
 - Projetos na lateral: `#erp`, `#relatorios`, `#carro`, cada um com sua contagem de pendências.
 - Prazos com visões **Hoje**, **Atrasadas**, **7 dias**; contador de atrasadas no título da aba.
 - Captura rápida numa linha: escreve e dá `Enter`, sem abrir janela nenhuma.
+- **Cole imagens** (`Ctrl+V`) direto na anotação: print de erro, foto do comprovante, recado no papel.
 - Funciona offline (é PWA, dá para instalar como aplicativo no Windows); sincroniza quando a rede voltar.
 
 ## Áreas e tipos
@@ -50,10 +51,34 @@ Levar o carro na revisão %pessoal #carro !sab +lembrete
 
 Nos detalhes, linhas em `- [ ] passo` viram subtarefas clicáveis.
 
+## Imagens
+
+Cole com `Ctrl+V` a qualquer momento:
+
+- com uma anotação **selecionada** na lista, a imagem entra naquela anotação;
+- sem nenhuma selecionada, ela vira uma **anotação nova** já na área/projeto abertos;
+- dentro do formulário (`＋ Nova` ou `e`), dá para colar, **arrastar o arquivo** para o campo Detalhes
+  ou usar o botão **＋ Imagem**.
+
+Clique na miniatura para ver em tela cheia (`←` `→` passam entre as imagens da anotação, `Esc` fecha,
+**Baixar** salva o arquivo). O `×` no canto da miniatura, dentro do formulário, tira a imagem da anotação.
+
+**Onde a imagem fica.** Antes de guardar, a imagem é reduzida (maior lado em 1800 px) e recomprimida em
+WebP até caber em 900 KB — um print de tela costuma ficar com algumas dezenas de KB. GIF e SVG pequenos
+passam intactos, para não perder animação nem o vetor. Os bytes ficam em dois lugares:
+
+- no **IndexedDB** desta máquina, que é o que faz a imagem aparecer offline;
+- num **arquivo por imagem** no repositório privado, em `dados/imagens/`, ao lado do `notas.json`.
+
+No `notas.json` fica só a ficha (`id`, tipo, tamanho, dimensões) — o arquivo de notas continua leve, e a
+sincronia não quebra por excesso de tamanho. Ao abrir noutra máquina, a imagem é baixada na hora de
+mostrar; enquanto não chega (sem rede, por exemplo), a miniatura aparece com um `⤓` no lugar.
+
 ## Atalhos
 
 `n` capturar · `Ctrl+K` ou `/` buscar · `1` `2` `3`… trocar de área · `j`/`k` navegar · `x` concluir ·
-`f` fixar · `e` editar · `Del` apagar · `Ctrl+Z` desfazer · `s` sincronizar · `?` ajuda · `Esc` fechar
+`f` fixar · `e` editar · `Ctrl+V` colar imagem · `Del` apagar · `Ctrl+Z` desfazer · `s` sincronizar ·
+`?` ajuda · `Esc` fechar
 
 ## Configurar a sincronia (uma vez por máquina)
 
@@ -82,10 +107,24 @@ Se algum token vazar, revogue em Settings → Developer settings; as notas conti
   **mescla item por item** pelo campo `atualizadoEm` (vence a alteração mais nova) e grava de volta.
 - Exclusões viajam como marcação `apagado` (some de vez após 45 dias), então apagar em casa apaga no trabalho.
 - Conflito de `sha` (duas máquinas gravando junto) é relido e remesclado automaticamente.
+- As imagens sobem **antes** do JSON, cada uma no seu arquivo em `dados/imagens/`, para nenhuma máquina
+  ver uma anotação apontando para imagem que ainda não existe no repositório.
 - Se `NOTAS.md` estiver ligado, o app também grava um resumo legível no repositório privado, separado
   por área e projeto — serve para ler as pendências pelo site do GitHub, no celular, sem token.
-- O JSON está na versão 2 (com `area` e `tipo`). Arquivo antigo (v1) é lido sem quebrar: os itens
+- O JSON está na versão 2 (com `area`, `tipo` e a lista `imagens` de cada anotação). Arquivo antigo (v1) é lido sem quebrar: os itens
   entram como “sem área” e tipo `Tarefa`, e o arquivo é regravado em v2 na primeira mudança.
+
+## Visual
+
+A interface segue o padrão do macOS: barra e lateral translúcidas, fio de cabelo no lugar de moldura,
+cantos macios, azul do sistema como único destaque forte e a fonte do próprio sistema. O tema acompanha
+o do computador na primeira vez que você abre; o ◐ no topo troca quando quiser.
+
+A cor do projeto entra **em doses pequenas** — um traço fino na lateral esquerda do cartão e a etiqueta
+do projeto com o fundo lavado. Nada de faixa colorida atravessando a anotação. Para escolher a cor:
+a **bolinha** do projeto na lateral, o botão **Cor** ao abrir um projeto, ou o **Cor** ao lado do campo
+Projeto no formulário (aí a cor vale só para aquela anotação). Sem escolher nada, a cor sai automática
+a partir do nome.
 
 ## Rodando local
 

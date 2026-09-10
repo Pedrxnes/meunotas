@@ -35,11 +35,33 @@ var S = (function () {
 
   var dados = { v: 2, itens: [], projetos: [], areas: [], atualizadoEm: U.agora() };
   var prefs = {
-    tema: 'escuro', visao: 'hoje', projeto: '', area: '', tipos: [],
+    tema: (self.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'claro' : 'escuro',
+    visao: 'hoje', projeto: '', area: '', tipos: [],
     ordem: 'prazo', mostrarFeitas: false, avisos: false
   };
 
   /* ---------- persistência ---------- */
+
+  /** ficha da imagem colada: só os dados leves; os bytes ficam no IndexedDB e no repositório */
+  function listaDeImagens(bruto) {
+    if (!Array.isArray(bruto)) return [];
+    var vistos = {};
+    return bruto.map(function (g) {
+      if (!g || typeof g !== 'object') return null;
+      var id = String(g.id || '').trim();
+      if (!id || vistos[id]) return null;
+      vistos[id] = true;
+      return {
+        id: id,
+        tipo: /^image\//.test(g.tipo) ? String(g.tipo) : 'image/png',
+        nome: String(g.nome || '').slice(0, 80),
+        bytes: Number(g.bytes) || 0,
+        largura: Number(g.largura) || 0,
+        altura: Number(g.altura) || 0,
+        criadoEm: g.criadoEm || U.agora()
+      };
+    }).filter(Boolean);
+  }
 
   function normalizarItem(it) {
     return {
@@ -53,6 +75,7 @@ var S = (function () {
       prazo: it.prazo || '',
       cor: U.corValida(it.cor),
       corFaixa: U.corValida(it.corFaixa),
+      imagens: listaDeImagens(it.imagens),
       feito: !!it.feito,
       feitoEm: it.feitoEm || '',
       fixado: !!it.fixado,
@@ -312,7 +335,8 @@ var S = (function () {
       tipo: campos.tipo,
       tags: campos.tags,
       prazo: campos.prazo,
-      fixado: campos.fixado
+      fixado: campos.fixado,
+      imagens: campos.imagens
     });
     if (!it.titulo && !it.detalhes) return null;
     if (!it.titulo) it.titulo = it.detalhes.split('\n')[0].slice(0, 80);
@@ -340,6 +364,41 @@ var S = (function () {
     it.atualizadoEm = U.agora();
     salvar(true);
     return it;
+  }
+
+  /* ---------- imagens da anotação ---------- */
+
+  function adicionarImagens(id, fichas) {
+    var it = porId(id);
+    if (!it || !fichas || !fichas.length) return null;
+    it.imagens = listaDeImagens(it.imagens.concat(fichas));
+    it.atualizadoEm = U.agora();
+    salvar(true);
+    return it;
+  }
+
+  function removerImagem(id, idImagem) {
+    var it = porId(id);
+    if (!it) return null;
+    var antes = it.imagens.length;
+    it.imagens = it.imagens.filter(function (g) { return g.id !== idImagem; });
+    if (it.imagens.length === antes) return it;
+    it.atualizadoEm = U.agora();
+    salvar(true);
+    return it;
+  }
+
+  /** todas as fichas em uso — o que precisa subir e o que vale manter no cache local */
+  function fichasDeImagem() {
+    var mapa = {};
+    vivos().forEach(function (i) {
+      i.imagens.forEach(function (g) { if (!mapa[g.id]) mapa[g.id] = g; });
+    });
+    return Object.keys(mapa).map(function (k) { return mapa[k]; });
+  }
+
+  function idsDeImagem() {
+    return fichasDeImagem().map(function (g) { return g.id; });
   }
 
   function alternarFeito(id) {
@@ -601,6 +660,7 @@ var S = (function () {
       .map(function (i) {
         return [i.id, i.titulo, i.detalhes, i.area, i.projeto, i.tipo, i.tags.join(','), i.prazo,
           i.cor || '', i.corFaixa || '',
+          i.imagens.map(function (g) { return g.id; }).join(','),
           i.feito ? 1 : 0, i.fixado ? 1 : 0, i.apagado ? 1 : 0, i.atualizadoEm].join('|');
       });
     // a cor entra na assinatura: trocar a cor de um projeto (ou da faixa) também precisa subir para o GitHub
@@ -626,6 +686,7 @@ var S = (function () {
       if (i.area) extra.push('%' + i.area);
       if (i.projeto) extra.push('#' + i.projeto);
       i.tags.forEach(function (t) { extra.push('@' + t); });
+      if (i.imagens.length) extra.push(i.imagens.length + (i.imagens.length === 1 ? ' imagem' : ' imagens'));
       linhas.push(recuo + '- [ ] ' + (i.fixado ? '★ ' : '') + tipoPorId(i.tipo).icone + ' ' + i.titulo +
         (extra.length ? '  _(' + extra.join(' · ') + ')_' : ''));
       if (i.detalhes) {
@@ -681,6 +742,8 @@ var S = (function () {
     corDaFaixa: corDaFaixa, corFaixaEscolhida: corFaixaEscolhida, definirCorFaixa: definirCorFaixa,
     corTagDoItem: corTagDoItem, corFaixaDoItem: corFaixaDoItem,
     definirCorItem: definirCorItem, definirCorFaixaItem: definirCorFaixaItem,
+    adicionarImagens: adicionarImagens, removerImagem: removerImagem,
+    fichasDeImagem: fichasDeImagem, idsDeImagem: idsDeImagem,
     adicionar: adicionar, atualizar: atualizar, alternarFeito: alternarFeito, alternarFixado: alternarFixado,
     apagar: apagar, restaurar: restaurar, renomearProjeto: renomearProjeto, renomearArea: renomearArea,
     limparConcluidas: limparConcluidas,
