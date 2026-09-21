@@ -36,7 +36,7 @@ var S = (function () {
   var dados = { v: 2, itens: [], projetos: [], areas: [], atualizadoEm: U.agora() };
   var prefs = {
     tema: (self.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'claro' : 'escuro',
-    visao: 'hoje', projeto: '', area: '', tipos: [],
+    visao: 'hoje', projeto: '', area: '', tipos: [], escopo: 'todos',
     ordem: 'prazo', mostrarFeitas: false, avisos: false
   };
 
@@ -489,6 +489,9 @@ var S = (function () {
 
   /* ---------- filtro / ordenação ---------- */
 
+  /** a aba de lembretes junta os gerais (sem projeto) com os criados dentro dos projetos */
+  function ehLembrete(i) { return i.tipo === 'lembrete'; }
+
   function combinaBusca(it, termo) {
     if (!termo) return true;
     var alvo = U.normalizar([it.titulo, it.detalhes, it.area, it.projeto, it.tags.join(' ')].join(' \n '));
@@ -507,7 +510,9 @@ var S = (function () {
     var termo = (op.busca || '').trim();
     var lista = daArea(vivos(), op.area);
 
-    if (op.tipos && op.tipos.length) {
+    // na aba de lembretes a visão já é o filtro de tipo; os chips de tipo ficam de fora
+    var soLembretes = visao === 'lembretes' && !termo;
+    if (op.tipos && op.tipos.length && !soLembretes) {
       lista = lista.filter(function (i) { return op.tipos.indexOf(i.tipo) >= 0; });
     }
 
@@ -529,6 +534,10 @@ var S = (function () {
         lista = lista.filter(function (i) { return i.fixado; });
       } else if (visao === 'entrada') {
         lista = lista.filter(function (i) { return !i.projeto; });
+      } else if (visao === 'lembretes') {
+        lista = lista.filter(ehLembrete);
+        if (op.escopo === 'gerais') lista = lista.filter(function (i) { return !i.projeto; });
+        else if (op.escopo === 'projetos') lista = lista.filter(function (i) { return !!i.projeto; });
       }
       // 'tudo' = tudo que está em aberto
     }
@@ -559,6 +568,9 @@ var S = (function () {
       semana: n(function (i) { return i.prazo && U.diasAte(i.prazo) <= 7; }),
       fixadas: n(function (i) { return i.fixado; }),
       entrada: n(function (i) { return !i.projeto; }),
+      lembretes: n(ehLembrete),
+      lembretesGerais: n(function (i) { return ehLembrete(i) && !i.projeto; }),
+      lembretesProjetos: n(function (i) { return ehLembrete(i) && !!i.projeto; }),
       tudo: abertas.length,
       feitas: naArea.filter(function (i) { return i.feito; }).length
     };

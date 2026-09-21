@@ -14,6 +14,8 @@ Abre em qualquer máquina (casa, trabalho, celular) e mostra as mesmas notas.
   e tudo muda com ele: visões, projetos, contadores e o que você anota em seguida.
 - Busca instantânea em tudo (título, detalhes, área, projeto, tags) — `Ctrl+K`.
 - Projetos na lateral: `#erp`, `#relatorios`, `#carro`, cada um com sua contagem de pendências.
+- **Aba de lembretes** só para o que não pode ser esquecido: os soltos, sem tema nenhum, e os que
+  nasceram dentro dos projetos, num lugar só.
 - Prazos com visões **Hoje**, **Atrasadas**, **7 dias**; contador de atrasadas no título da aba.
 - Captura rápida numa linha: escreve e dá `Enter`, sem abrir janela nenhuma.
 - **Cole imagens** (`Ctrl+V`) direto na anotação: print de erro, foto do comprovante, recado no papel.
@@ -28,6 +30,22 @@ Anotações antigas sem área aparecem em **Tudo** e o ⚙ oferece mandar todas 
 
 **Tipo** = o que aquela linha é: `Tarefa` (padrão), `Nota`, `Ideia`, `Lembrete`. Os chips acima da lista
 filtram por tipo e podem ser combinados — dá para ver, por exemplo, só as ideias do pessoal.
+
+## A aba Lembretes
+
+Na lateral, acima das visões, **Lembretes** junta tudo que é do tipo `Lembrete` em três entradas:
+
+| Entrada | O que mostra |
+|---|---|
+| **Todos** | tudo, separado por origem: primeiro os gerais, depois um bloco por projeto |
+| **Gerais** | só os soltos — as coisas que você quer deixar anotadas sem tema nenhum, sem projeto |
+| **Dos projetos** | só os que nasceram dentro de `#erp`, `#carro` e companhia |
+
+Com a aba aberta, o que você escrever na barra de captura já nasce lembrete — não precisa digitar
+`+lembrete`, nem escolher projeto. O resto da sintaxe continua valendo: `!amanha` dá prazo, `#projeto`
+manda o lembrete para um projeto, `@tag` etiqueta. A área selecionada continua mandando: em `Trabalho`
+aparecem só os lembretes do trabalho; em `Tudo`, todos. Na faixa de cada bloco, o nome do projeto é
+clicável e abre aquele projeto. Atalho: `l`.
 
 ## Como escrever na barra de captura
 
@@ -76,9 +94,9 @@ mostrar; enquanto não chega (sem rede, por exemplo), a miniatura aparece com um
 
 ## Atalhos
 
-`n` capturar · `Ctrl+K` ou `/` buscar · `1` `2` `3`… trocar de área · `j`/`k` navegar · `x` concluir ·
-`f` fixar · `e` editar · `Ctrl+V` colar imagem · `Del` apagar · `Ctrl+Z` desfazer · `s` sincronizar ·
-`?` ajuda · `Esc` fechar
+`n` capturar · `Ctrl+K` ou `/` buscar · `1` `2` `3`… trocar de área · `l` lembretes · `j`/`k` navegar ·
+`x` concluir · `f` fixar · `e` editar · `Ctrl+V` colar imagem · `Del` apagar · `Ctrl+Z` desfazer ·
+`s` sincronizar · `?` ajuda · `Esc` fechar
 
 ## Configurar a sincronia (uma vez por máquina)
 

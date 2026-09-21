@@ -2,12 +2,15 @@
 (function () {
   'use strict';
 
-  var vista = { area: '', visao: 'hoje', projeto: '', tipos: [], busca: '', selecionado: '', editando: '', criando: false };
+  var vista = { area: '', visao: 'hoje', projeto: '', escopo: 'todos', tipos: [], busca: '', selecionado: '', editando: '', criando: false };
   var ultimoApagado = null;
   var imagensPendentes = [];   // imagens coladas numa anotação que ainda não foi criada
   var visor = { fichas: [], pos: 0 };
   var pronto = false;
   var GRUPOS = ['Atrasadas', 'Hoje', 'Amanhã', 'Próximos 7 dias', 'Mais adiante', 'Sem prazo', 'Concluídas'];
+  /** recortes da aba de lembretes: tudo, só os soltos, ou só os que vivem dentro de projetos */
+  var ESCOPOS = ['todos', 'gerais', 'projetos'];
+  var placeholderPadrao = '';
 
   /* ---------------- arranque ---------------- */
 
@@ -19,6 +22,8 @@
     vista.projeto = S.prefs.projeto || '';
     vista.area = S.prefs.area || '';
     vista.tipos = Array.isArray(S.prefs.tipos) ? S.prefs.tipos : [];
+    vista.escopo = ESCOPOS.indexOf(S.prefs.escopo) >= 0 ? S.prefs.escopo : 'todos';
+    placeholderPadrao = U.el('#entrada').placeholder;
     if (vista.visao === 'projeto' && S.nomesDeProjeto('').indexOf(vista.projeto) < 0) {
       vista.visao = 'hoje'; vista.projeto = '';
     }
@@ -79,6 +84,7 @@
   function desenhar() {
     desenharAreas();
     desenharLateral();
+    desenharCaptura();
     desenharFiltroTipos();
     desenharCabecalho();
     desenharLista();
@@ -104,7 +110,21 @@
     }).join('') + '<button class="area mais" id="btn-nova-area" title="Nova área">＋</button>';
   }
 
+  /** na aba de lembretes a barra de cima já avisa que o que for escrito ali vira lembrete */
+  function desenharCaptura() {
+    U.el('#entrada').placeholder = naAbaDeLembretes()
+      ? 'Escreve o lembrete e dá Enter…   !amanha  #projeto  @tag  * fixar'
+      : placeholderPadrao;
+  }
+
+  /** a aba de lembretes está mesmo no comando? (uma busca passa por cima dela) */
+  function naAbaDeLembretes() {
+    return vista.visao === 'lembretes' && !vista.busca;
+  }
+
   function desenharFiltroTipos() {
+    // a aba de lembretes já é um filtro de tipo — os chips só confundiriam
+    if (naAbaDeLembretes()) { U.el('#filtro-tipos').innerHTML = ''; return; }
     var contas = S.contagemPorTipo(vista.area);
     U.el('#filtro-tipos').innerHTML = S.TIPOS.map(function (t) {
       var n = contas[t.id] || 0;
@@ -121,7 +141,9 @@
       e.textContent = n ? String(n) : '';
     });
     U.els('.link-visao[data-visao]').forEach(function (b) {
-      b.classList.toggle('ativo', vista.visao === b.getAttribute('data-visao') && !vista.busca);
+      var escopo = b.getAttribute('data-escopo') || '';
+      b.classList.toggle('ativo', vista.visao === b.getAttribute('data-visao') && !vista.busca &&
+        (!escopo || escopo === vista.escopo));
     });
 
     var mapa = S.contagemPorProjeto(vista.area);
@@ -153,12 +175,17 @@
     if (vista.busca) return 'Busca: “' + vista.busca + '”';
     var base = {
       hoje: 'Hoje', atrasadas: 'Atrasadas', semana: 'Próximos 7 dias', fixadas: 'Fixadas',
-      entrada: 'Sem projeto', tudo: 'Tudo em aberto', feitas: 'Concluídas',
+      entrada: 'Sem projeto', tudo: 'Tudo em aberto', feitas: 'Concluídas', lembretes: 'Lembretes',
       projeto: vista.projeto
     }[vista.visao] || 'Hoje';
     var etiquetas = [];
     if (vista.area) etiquetas.push(vista.area === 'sem-area' ? 'sem área' : vista.area);
-    vista.tipos.forEach(function (t) { etiquetas.push(S.tipoPorId(t).rotulo.toLowerCase()); });
+    if (naAbaDeLembretes()) {
+      if (vista.escopo === 'gerais') etiquetas.push('gerais');
+      if (vista.escopo === 'projetos') etiquetas.push('dos projetos');
+    } else {
+      vista.tipos.forEach(function (t) { etiquetas.push(S.tipoPorId(t).rotulo.toLowerCase()); });
+    }
     return base + (etiquetas.length ? ' · ' + etiquetas.join(' · ') : '');
   }
 
@@ -186,24 +213,72 @@
     return 'Mais adiante';
   }
 
+  /** texto do vazio: na aba de lembretes ele explica o que aquele recorte guarda */
+  function textoVazio() {
+    if (vista.busca) return 'Nada encontrado para “' + U.escapar(vista.busca) + '”.';
+    if (!naAbaDeLembretes()) return 'Nada aqui. Anota na barra de cima ou clica em ＋ Nova.';
+    if (vista.escopo === 'gerais') return 'Nenhum lembrete solto. Escreve na barra de cima — aqui tudo já entra como lembrete, sem precisar de projeto.';
+    if (vista.escopo === 'projetos') return 'Nenhum lembrete dentro dos projetos. Para criar um, anota com <code>+lembrete</code> num projeto.';
+    return 'Nenhum lembrete ainda. Escreve na barra de cima — nesta aba tudo já entra como lembrete.';
+  }
+
+  /** na aba de lembretes o que separa a lista é a origem: os gerais primeiro, depois cada projeto */
+  function blocosDeLembrete(itens) {
+    var blocos = [];
+    var gerais = itens.filter(function (i) { return !i.projeto; });
+    if (gerais.length) blocos.push({ projeto: '', itens: gerais });
+
+    var nomes = [];
+    itens.forEach(function (i) { if (i.projeto && nomes.indexOf(i.projeto) < 0) nomes.push(i.projeto); });
+    nomes.sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+    nomes.forEach(function (nome) {
+      blocos.push({
+        projeto: nome,
+        itens: itens.filter(function (i) { return i.projeto === nome; })
+      });
+    });
+    return blocos;
+  }
+
+  function faixaDeLembrete(bloco) {
+    if (!bloco.projeto) {
+      return '<div class="faixa-dia">Gerais<span class="faixa-nota">sem projeto</span></div>';
+    }
+    return '<div class="faixa-dia">' +
+      '<span class="bolinha" style="background:' + S.corDoProjeto(bloco.projeto) + '"></span>' +
+      '<button class="faixa-projeto" data-ir-projeto="' + U.escapar(bloco.projeto) + '"' +
+      ' title="Abrir o projeto ' + U.escapar(bloco.projeto) + '">' + U.escapar(bloco.projeto) + '</button>' +
+      '</div>';
+  }
+
+  function listaDeLembretes(itens) {
+    var blocos = blocosDeLembrete(itens);
+    // um recorte com um bloco só não precisa de título repetindo o que a lateral já diz
+    if (blocos.length === 1 && vista.escopo !== 'todos') return blocos[0].itens.map(cartao).join('');
+    return blocos.map(function (b) {
+      return faixaDeLembrete(b) + b.itens.map(cartao).join('');
+    }).join('');
+  }
+
   function desenharLista() {
     var itens = S.listar({
-      area: vista.area, tipos: vista.tipos,
+      area: vista.area, tipos: vista.tipos, escopo: vista.escopo,
       visao: vista.visao, projeto: vista.projeto, busca: vista.busca,
       ordem: U.el('#ordem').value, mostrarFeitas: U.el('#mostrar-feitas').checked
     });
     var alvo = U.el('#lista');
 
     if (!itens.length) {
-      alvo.innerHTML = '<div class="vazio"><div class="grande">' + (vista.busca ? '⌕' : '✓') + '</div>' +
-        (vista.busca ? 'Nada encontrado para “' + U.escapar(vista.busca) + '”.'
-          : 'Nada aqui. Anota na barra de cima ou clica em ＋ Nova.') + '</div>';
+      alvo.innerHTML = '<div class="vazio"><div class="grande">' +
+        (vista.busca ? '⌕' : naAbaDeLembretes() ? '⏰' : '✓') + '</div>' + textoVazio() + '</div>';
       return;
     }
 
     var agrupar = U.el('#ordem').value === 'prazo' && !vista.busca;
     var html = '';
-    if (agrupar) {
+    if (naAbaDeLembretes()) {
+      html = listaDeLembretes(itens);
+    } else if (agrupar) {
       var ordenados = itens.slice().sort(function (a, b) {
         return GRUPOS.indexOf(grupoDe(a)) - GRUPOS.indexOf(grupoDe(b));
       });
@@ -331,7 +406,8 @@
         U.escapar(it.projeto) + '" style="background:' + U.corDeFundo(cor) + ';color:' + U.corLegivel(cor) + '">' +
         U.escapar(it.projeto) + '</span>';
     }
-    if (it.tipo !== 'tarefa') {
+    // dentro da aba de lembretes o chip de tipo diria "Lembrete" em toda linha — não informa nada
+    if (it.tipo !== 'tarefa' && !naAbaDeLembretes()) {
       var tipo = S.tipoPorId(it.tipo);
       chips += '<span class="chip tipo" data-ir-tipo="' + it.tipo + '" title="' + U.escapar(tipo.dica) + '">' +
         tipo.icone + ' ' + U.escapar(tipo.rotulo) + '</span>';
@@ -454,7 +530,7 @@
     // visões e projetos
     U.els('.link-visao[data-visao]').forEach(function (b) {
       b.addEventListener('click', function () {
-        irPara(b.getAttribute('data-visao'), '');
+        irPara(b.getAttribute('data-visao'), '', b.getAttribute('data-escopo') || '');
       });
     });
     U.el('#lista-projetos').addEventListener('click', function (ev) {
@@ -490,6 +566,9 @@
     // lista
     var lista = U.el('#lista');
     lista.addEventListener('click', function (ev) {
+      var faixa = ev.target.closest('.faixa-dia [data-ir-projeto]');
+      if (faixa) { irPara('projeto', faixa.getAttribute('data-ir-projeto')); return; }
+
       var cartao = ev.target.closest('.item');
       if (!cartao) return;
       var id = cartao.getAttribute('data-id');
@@ -561,12 +640,14 @@
     document.addEventListener('keydown', atalhos);
   }
 
-  function irPara(visao, projeto) {
+  function irPara(visao, projeto, escopo) {
     vista.visao = visao;
     vista.projeto = projeto || '';
+    if (ESCOPOS.indexOf(escopo) >= 0) vista.escopo = escopo;
     vista.busca = '';
     U.el('#busca').value = '';
-    S.prefs.visao = visao; S.prefs.projeto = vista.projeto; S.salvarPrefs();
+    S.prefs.visao = visao; S.prefs.projeto = vista.projeto;
+    S.prefs.escopo = vista.escopo; S.salvarPrefs();
     U.el('#lateral').classList.remove('aberta');
     desenhar();
   }
@@ -639,6 +720,13 @@
     });
   }
 
+  /** o tipo que o contexto aberto sugere: lembrete na aba de lembretes, o chip quando é um só */
+  function tipoDoContexto(padrao) {
+    if (naAbaDeLembretes()) return 'lembrete';
+    if (vista.tipos.length === 1) return vista.tipos[0];
+    return padrao || '';
+  }
+
   function anotar() {
     var entrada = U.el('#entrada');
     var texto = entrada.value.trim();
@@ -647,13 +735,14 @@
     // herda o contexto aberto quando nada for informado
     if (!campos.area && vista.area && vista.area !== 'sem-area') campos.area = vista.area;
     if (!campos.projeto && vista.visao === 'projeto') campos.projeto = vista.projeto;
-    if (!campos.tipo && vista.tipos.length === 1) campos.tipo = vista.tipos[0];
+    if (!campos.tipo) campos.tipo = tipoDoContexto();
     if (!campos.prazo && vista.visao === 'hoje') campos.prazo = U.hoje();
     var it = S.adicionar(campos);
     if (!it) return;
     entrada.value = '';
     U.el('#captura-dica').innerHTML = '';
-    U.toast('Anotado' + (it.area ? ' em ' + it.area : '') + (it.projeto ? ' / ' + it.projeto : '') +
+    U.toast((it.tipo === 'lembrete' ? 'Lembrete anotado' : 'Anotado') +
+      (it.area ? ' em ' + it.area : '') + (it.projeto ? ' / ' + it.projeto : '') +
       (it.prazo ? ' · ' + U.prazoLegivel(it.prazo) : ''));
     selecionar(it.id);
   }
@@ -798,7 +887,7 @@
       var nome = String(fichas[0].nome || '').replace(/\.[a-z0-9]+$/i, '').trim();
       var campos = {
         titulo: nome || 'Imagem colada',
-        tipo: vista.tipos.length === 1 ? vista.tipos[0] : 'nota',
+        tipo: tipoDoContexto('nota'),
         imagens: fichas
       };
       if (vista.area && vista.area !== 'sem-area') campos.area = vista.area;
@@ -1031,6 +1120,7 @@
       case 'n': ev.preventDefault(); U.el('#entrada').focus(); break;
       case 'N': ev.preventDefault(); abrirNova(); break;
       case '/': ev.preventDefault(); U.el('#busca').focus(); break;
+      case 'l': ev.preventDefault(); irPara('lembretes', '', vista.escopo); break;
       case 's': ev.preventDefault(); G.configurado() ? G.sincronizar() : abrirConfig(); break;
       case '?': abrirModal('#modal-ajuda'); break;
       case 'j': case 'ArrowDown':
@@ -1242,7 +1332,7 @@
     U.el('#ed-prazo').value = vista.visao === 'hoje' ? U.hoje() : '';
     U.el('#ed-tags').value = '';
     U.el('#ed-fixado').checked = false;
-    U.el('#ed-tipo').innerHTML = opcoesDeTipo(vista.tipos.length === 1 ? vista.tipos[0] : 'tarefa');
+    U.el('#ed-tipo').innerHTML = opcoesDeTipo(tipoDoContexto('tarefa'));
     desenharGaleriaEditor();
     preencherDatalists();
     atualizarAmostraEditor();

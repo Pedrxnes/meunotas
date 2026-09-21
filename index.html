@@ -53,6 +53,13 @@
     </nav>
 
     <nav class="grupo">
+      <div class="grupo-titulo">Lembretes</div>
+      <button class="link-visao" data-visao="lembretes" data-escopo="todos"><span class="ico">⏰</span>Todos<span class="conta" data-conta="lembretes"></span></button>
+      <button class="link-visao" data-visao="lembretes" data-escopo="gerais"><span class="ico">○</span>Gerais<span class="conta" data-conta="lembretesGerais"></span></button>
+      <button class="link-visao" data-visao="lembretes" data-escopo="projetos"><span class="ico">▣</span>Dos projetos<span class="conta" data-conta="lembretesProjetos"></span></button>
+    </nav>
+
+    <nav class="grupo">
       <div class="grupo-titulo">Visões</div>
       <button class="link-visao" data-visao="hoje"><span class="ico">◉</span>Hoje<span class="conta" data-conta="hoje"></span></button>
       <button class="link-visao" data-visao="atrasadas"><span class="ico">⚠</span>Atrasadas<span class="conta alerta" data-conta="atrasadas"></span></button>
@@ -297,6 +304,10 @@
       <p class="nota">Pessoal: <code>Levar o carro na revisão %pessoal #carro !sab +lembrete</code></p>
       <p class="nota">Dica: com uma área selecionada na lateral, tudo que você anotar já entra nela — não precisa digitar <code>%</code> toda hora.</p>
 
+      <div class="grupo-titulo">A aba Lembretes</div>
+      <p class="nota">Na lateral, <b>Lembretes</b> junta num lugar só tudo que é do tipo <code>Lembrete</code>: os <b>Gerais</b> (aqueles que você só quer deixar anotados, sem projeto nenhum) e os <b>Dos projetos</b> (criados dentro de <code>#erp</code>, <code>#carro</code> e companhia). Em <b>Todos</b> a lista vem separada por origem — primeiro os gerais, depois um bloco por projeto; clicar no nome do projeto na faixa abre aquele projeto.</p>
+      <p class="nota">Com a aba aberta, o que você escrever na barra de cima já nasce como lembrete — não precisa digitar <code>+lembrete</code>. Continua valendo escrever <code>!amanha</code> para dar prazo ou <code>#projeto</code> para mandar o lembrete para um projeto. A área selecionada continua mandando: em <b>Trabalho</b> você vê só os lembretes do trabalho; em <b>Tudo</b>, todos.</p>
+
       <div class="grupo-titulo">Imagens</div>
       <p class="nota">Cole (<code>Ctrl+V</code>) uma imagem a qualquer momento: com uma anotação selecionada na lista, ela entra naquela anotação; sem nenhuma selecionada, vira uma anotação nova. Dentro do formulário dá para colar, arrastar o arquivo ou usar <b>＋ Imagem</b>. Clique na miniatura para ver em tela cheia.</p>
       <p class="nota">As imagens são reduzidas antes de guardar e sobem para o repositório privado como arquivos separados, na pasta <code>imagens/</code> ao lado do <code>notas.json</code> — o arquivo de notas continua leve.</p>
@@ -316,6 +327,7 @@
         <tr><td><code>Del</code></td><td>apaga a selecionada</td></tr>
         <tr><td><code>Ctrl+Enter</code></td><td>no editor: salvar</td></tr>
         <tr><td><code>1</code> <code>2</code> <code>3</code>…</td><td>troca de área (1 = todas)</td></tr>
+        <tr><td><code>l</code></td><td>abre a aba de lembretes</td></tr>
         <tr><td><code>s</code></td><td>sincronizar agora</td></tr>
         <tr><td><code>Ctrl+V</code></td><td>cola imagem na anotação selecionada</td></tr>
         <tr><td><code>Esc</code></td><td>fecha modal / limpa busca</td></tr>
